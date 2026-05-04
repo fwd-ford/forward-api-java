@@ -1,7 +1,10 @@
-# forward-api (Java / Spring Boot)
+# forward-api-java
 
-HTTP and SOAP API for **ForwardService**. Java 17 + Spring Boot 3.2 port of the
-Go `forward-api`, built to satisfy the SOA discipline requirement.
+![org](https://img.shields.io/badge/org-fwd--ford-blue?style=flat-square)
+![stack](https://img.shields.io/badge/stack-Java_17_·_Spring_Boot_3-333?style=flat-square)
+
+HTTP and SOAP API for **ForwardService**. Java 17 + Spring Boot 3.2, built to
+satisfy the SOA discipline requirement of the Ford x FIAP 2026 Challenge.
 
 ## Stack
 
@@ -15,7 +18,7 @@ Go `forward-api`, built to satisfy the SOA discipline requirement.
 
 ## Structure
 
-```
+```text
 src/main/java/com/fwdford/forwardapi/
   ForwardApiApplication.java          Spring Boot entrypoint
   config/AppProperties.java           @ConfigurationProperties bindings

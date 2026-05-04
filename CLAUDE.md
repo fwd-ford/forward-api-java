@@ -2,9 +2,10 @@
 
 ## Status
 
-Official backend of ForwardService as of 2026-04-21. Replaces the archived
-Go implementation at [`../forward-api/`](../forward-api/). Do NOT revive
-or edit the Go repo; use this one for every change.
+Official backend of ForwardService as of 2026-04-21. Replaces a previous
+Go + Fiber implementation that was archived at
+[github.com/fwd-ford/forward-api](https://github.com/fwd-ford/forward-api)
+(read-only, kept only for historical reference).
 
 ## Language Policy
 
