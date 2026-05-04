@@ -1,0 +1,52 @@
+# Runtime configuration. Every value can be overridden via environment variables.
+# Configuracao de runtime. Todos os valores podem ser sobrescritos por variaveis de ambiente.
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  tomcat:
+    max-http-form-post-size: 1MB
+    max-swallow-size: 1MB
+
+spring:
+  application:
+    name: forward-api
+  lifecycle:
+    timeout-per-shutdown-phase: 10s
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/forward?sslmode=disable}
+    username: ${DATABASE_USER:forward}
+    password: ${DATABASE_PASSWORD:forward_dev}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 2
+      max-lifetime: 1800000
+      idle-timeout: 300000
+      connection-test-query: SELECT 1
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+
+forward:
+  env: ${ENV:development}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  rate-limit:
+    max: ${RATE_LIMIT_MAX:60}
+    window: ${RATE_LIMIT_WINDOW:1m}
+  jwt:
+    secret: ${SUPABASE_JWT_SECRET:}
+    jwks-url: ${SUPABASE_JWKS_URL:}
+    issuer: ${SUPABASE_JWT_ISSUER:}
+  internal-api-key: ${INTERNAL_API_KEY:}
+  max-body-bytes: ${MAX_BODY_BYTES:1048576}

@@ -1,0 +1,38 @@
+# Maven build output
+target/
+*.jar
+*.war
+*.ear
+dependency-reduced-pom.xml
+
+# Maven wrapper local install
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/
+.metadata/
+
+# Logs
+*.log
+*.log.*
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Spring Boot devtools
+.spring-boot-devtools.properties

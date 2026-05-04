@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Contract-first schema for the SOAP vehicles service.
+     Schema contract-first do servico SOAP de veiculos. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:forwardservice:vehicles"
+           xmlns:tns="urn:forwardservice:vehicles"
+           elementFormDefault="qualified">
+
+    <xs:element name="GetVehicleRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="VIN" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="GetVehicleResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="VIN"          type="xs:string"/>
+                <xs:element name="Model"        type="xs:string"/>
+                <xs:element name="Year"         type="xs:int"/>
+                <xs:element name="Discontinued" type="xs:boolean"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
