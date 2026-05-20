@@ -2,10 +2,9 @@
 // DTO de cliente retornado por /api/v1/customers/{id}.
 package com.fwdford.forwardapi.model;
 
-import java.time.OffsetDateTime;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.OffsetDateTime;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Customer(

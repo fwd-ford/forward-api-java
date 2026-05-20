@@ -3,16 +3,15 @@
 // Validador JWT via JWKS: baixa e cacheia chaves publicas, verifica ES256/RS256.
 package com.fwdford.forwardapi.security;
 
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 public class JwksJwtValidator implements JwtValidator {
 

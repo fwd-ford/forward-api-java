@@ -3,28 +3,24 @@
 // Rate limit por IP + subject; em multi-instancia, migrar para Redis.
 package com.fwdford.forwardapi.security;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-import org.springframework.core.annotation.Order;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fwdford.forwardapi.config.AppProperties;
 import com.fwdford.forwardapi.web.AuthPrincipal;
 import com.fwdford.forwardapi.web.WebAttrs;
-
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Order(10)

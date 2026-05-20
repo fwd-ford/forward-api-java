@@ -3,12 +3,11 @@
 // Escolhe o validador JWT; JWKS > HS256 > bypass (dev).
 package com.fwdford.forwardapi.security;
 
+import com.fwdford.forwardapi.config.AppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import com.fwdford.forwardapi.config.AppProperties;
 
 @Configuration
 public class JwtValidatorFactory {

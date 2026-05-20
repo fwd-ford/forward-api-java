@@ -2,10 +2,9 @@
 // Helpers de validacao usados pelos controllers: formato e whitelist.
 package com.fwdford.forwardapi.web;
 
+import com.fwdford.forwardapi.error.ApiException;
 import java.util.List;
 import java.util.regex.Pattern;
-
-import com.fwdford.forwardapi.error.ApiException;
 
 public final class Validations {
 

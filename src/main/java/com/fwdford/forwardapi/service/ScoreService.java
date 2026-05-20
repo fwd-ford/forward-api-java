@@ -2,11 +2,10 @@
 // Service de score: nao exposto ao usuario final; apenas analyst/admin/dealer.
 package com.fwdford.forwardapi.service;
 
-import org.springframework.stereotype.Service;
-
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.ChurnScore;
 import com.fwdford.forwardapi.repository.ScoreRepository;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ScoreService {

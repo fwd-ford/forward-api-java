@@ -2,13 +2,11 @@
 // Service de lead: repassa para o repositorio nos endpoints de leitura da Sprint 1.
 package com.fwdford.forwardapi.service;
 
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
 import com.fwdford.forwardapi.model.Lead;
 import com.fwdford.forwardapi.model.LeadFilter;
 import com.fwdford.forwardapi.repository.LeadRepository;
+import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class LeadService {

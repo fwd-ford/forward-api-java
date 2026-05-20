@@ -2,10 +2,8 @@
 // Retorna o sujeito e papel atuais, conforme parseado do JWT ou X-API-Key.
 package com.fwdford.forwardapi.web;
 
-import java.util.Map;
-
 import jakarta.servlet.http.HttpServletRequest;
-
+import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

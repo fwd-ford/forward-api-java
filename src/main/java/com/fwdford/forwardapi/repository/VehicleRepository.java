@@ -2,13 +2,11 @@
 // Repositorio de veiculos: busca parametrizada por VIN.
 package com.fwdford.forwardapi.repository;
 
+import com.fwdford.forwardapi.model.Vehicle;
 import java.util.Optional;
-
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-
-import com.fwdford.forwardapi.model.Vehicle;
 
 @Repository
 public class VehicleRepository {

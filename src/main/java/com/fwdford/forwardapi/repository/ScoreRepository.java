@@ -2,13 +2,11 @@
 // Repositorio de scores: retorna o score atual mais recente do cliente.
 package com.fwdford.forwardapi.repository;
 
+import com.fwdford.forwardapi.model.ChurnScore;
 import java.util.Optional;
-
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-
-import com.fwdford.forwardapi.model.ChurnScore;
 
 @Repository
 public class ScoreRepository {

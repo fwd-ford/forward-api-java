@@ -2,13 +2,11 @@
 // Validador JWT HS256 com segredo compartilhado. Espelha a implementacao Go.
 package com.fwdford.forwardapi.security;
 
+import io.jsonwebtoken.Jwts;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-
-import io.jsonwebtoken.Jwts;
 
 public class Hs256JwtValidator implements JwtValidator {
 

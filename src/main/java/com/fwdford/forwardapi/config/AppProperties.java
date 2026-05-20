@@ -4,7 +4,6 @@ package com.fwdford.forwardapi.config;
 
 import java.time.Duration;
 import java.util.List;
-
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "forward")

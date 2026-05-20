@@ -3,8 +3,11 @@
 // Endpoint SOAP de veiculos: uma operacao (GetVehicle). XML tipado manualmente sem JAXB gen.
 package com.fwdford.forwardapi.soap;
 
+import com.fwdford.forwardapi.error.ApiException;
+import com.fwdford.forwardapi.model.Vehicle;
+import com.fwdford.forwardapi.service.VehicleService;
+import com.fwdford.forwardapi.web.Validations;
 import javax.xml.transform.dom.DOMResult;
-
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 import org.springframework.ws.server.endpoint.annotation.RequestPayload;
@@ -14,11 +17,6 @@ import org.springframework.ws.soap.server.endpoint.annotation.SoapFault;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
-
-import com.fwdford.forwardapi.error.ApiException;
-import com.fwdford.forwardapi.model.Vehicle;
-import com.fwdford.forwardapi.service.VehicleService;
-import com.fwdford.forwardapi.web.Validations;
 
 @Endpoint
 public class VehicleEndpoint {

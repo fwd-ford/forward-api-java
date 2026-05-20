@@ -2,15 +2,13 @@
 // GET /api/v1/scores/{customerId}: RBAC aplicado no service.
 package com.fwdford.forwardapi.web;
 
+import com.fwdford.forwardapi.model.ChurnScore;
+import com.fwdford.forwardapi.service.ScoreService;
 import jakarta.servlet.http.HttpServletRequest;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fwdford.forwardapi.model.ChurnScore;
-import com.fwdford.forwardapi.service.ScoreService;
 
 @RestController
 @RequestMapping("/api/v1/scores")

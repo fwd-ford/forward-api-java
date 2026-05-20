@@ -2,11 +2,10 @@
 // DTO de veiculo retornado por /api/v1/vehicles/{vin} e pela operacao SOAP GetVehicle.
 package com.fwdford.forwardapi.model;
 
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Vehicle(

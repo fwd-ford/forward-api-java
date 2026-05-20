@@ -3,22 +3,19 @@
 // Filtro de autenticacao: aceita Bearer JWT ou X-API-Key (server-to-server).
 package com.fwdford.forwardapi.security;
 
-import java.io.IOException;
-import java.util.Map;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fwdford.forwardapi.config.AppProperties;
 import com.fwdford.forwardapi.web.AuthPrincipal;
 import com.fwdford.forwardapi.web.WebAttrs;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class AuthFilter extends OncePerRequestFilter {

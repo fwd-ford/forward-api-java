@@ -2,15 +2,13 @@
 // GET /api/v1/customers/{id}: valida UUID e delega RBAC ao service.
 package com.fwdford.forwardapi.web;
 
+import com.fwdford.forwardapi.model.Customer;
+import com.fwdford.forwardapi.service.CustomerService;
 import jakarta.servlet.http.HttpServletRequest;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fwdford.forwardapi.model.Customer;
-import com.fwdford.forwardapi.service.CustomerService;
 
 @RestController
 @RequestMapping("/api/v1/customers")

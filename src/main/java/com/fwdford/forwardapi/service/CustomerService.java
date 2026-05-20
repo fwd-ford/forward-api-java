@@ -3,11 +3,10 @@
 // Service de customer: aplica RBAC (user so ve a si mesmo; analyst/admin/dealer veem qualquer).
 package com.fwdford.forwardapi.service;
 
-import org.springframework.stereotype.Service;
-
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.Customer;
 import com.fwdford.forwardapi.repository.CustomerRepository;
+import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService {

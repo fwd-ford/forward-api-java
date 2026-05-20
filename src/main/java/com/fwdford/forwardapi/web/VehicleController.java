@@ -2,13 +2,12 @@
 // GET /api/v1/vehicles/{vin}: valida VIN e retorna o veiculo.
 package com.fwdford.forwardapi.web;
 
+import com.fwdford.forwardapi.model.Vehicle;
+import com.fwdford.forwardapi.service.VehicleService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fwdford.forwardapi.model.Vehicle;
-import com.fwdford.forwardapi.service.VehicleService;
 
 @RestController
 @RequestMapping("/api/v1/vehicles")

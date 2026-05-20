@@ -2,13 +2,11 @@
 // Repositorio de customers: queries parametrizadas, sem concatenacao de input.
 package com.fwdford.forwardapi.repository;
 
+import com.fwdford.forwardapi.model.Customer;
 import java.util.Optional;
-
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-
-import com.fwdford.forwardapi.model.Customer;
 
 @Repository
 public class CustomerRepository {

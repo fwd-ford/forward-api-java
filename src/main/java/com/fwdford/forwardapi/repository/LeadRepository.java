@@ -3,14 +3,12 @@
 // Repositorio de leads: filtros dinamicos so com colunas permitidas, valores parametrizados.
 package com.fwdford.forwardapi.repository;
 
+import com.fwdford.forwardapi.model.Lead;
+import com.fwdford.forwardapi.model.LeadFilter;
 import java.util.List;
-
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-
-import com.fwdford.forwardapi.model.Lead;
-import com.fwdford.forwardapi.model.LeadFilter;
 
 @Repository
 public class LeadRepository {

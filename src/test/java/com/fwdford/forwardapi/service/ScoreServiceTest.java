@@ -4,16 +4,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import java.time.OffsetDateTime;
-import java.util.Optional;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.ChurnScore;
 import com.fwdford.forwardapi.repository.ScoreRepository;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class ScoreServiceTest {
 

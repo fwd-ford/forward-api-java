@@ -3,13 +3,11 @@
 // Cabecalhos de seguranca em toda resposta: mitiga XSS, clickjacking, MIME sniffing.
 package com.fwdford.forwardapi.web;
 
-import java.io.IOException;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+import java.io.IOException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;

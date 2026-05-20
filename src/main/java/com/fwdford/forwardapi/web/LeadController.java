@@ -2,16 +2,14 @@
 // GET /api/v1/leads: aplica validacao dos parametros antes de chamar o service.
 package com.fwdford.forwardapi.web;
 
+import com.fwdford.forwardapi.model.Lead;
+import com.fwdford.forwardapi.model.LeadFilter;
+import com.fwdford.forwardapi.service.LeadService;
 import java.util.List;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fwdford.forwardapi.model.Lead;
-import com.fwdford.forwardapi.model.LeadFilter;
-import com.fwdford.forwardapi.service.LeadService;
 
 @RestController
 @RequestMapping("/api/v1/leads")

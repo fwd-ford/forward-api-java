@@ -2,11 +2,9 @@ package com.fwdford.forwardapi.web;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
 import com.fwdford.forwardapi.error.ApiException;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class ValidationsTest {
 
