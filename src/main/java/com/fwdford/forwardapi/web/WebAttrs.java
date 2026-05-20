@@ -3,8 +3,8 @@
 package com.fwdford.forwardapi.web;
 
 public final class WebAttrs {
-    public static final String PRINCIPAL  = "forward.principal";
-    public static final String REQUEST_ID = "forward.requestId";
+  public static final String PRINCIPAL = "forward.principal";
+  public static final String REQUEST_ID = "forward.requestId";
 
-    private WebAttrs() {}
+  private WebAttrs() {}
 }

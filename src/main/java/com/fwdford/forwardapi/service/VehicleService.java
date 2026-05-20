@@ -11,13 +11,13 @@ import com.fwdford.forwardapi.repository.VehicleRepository;
 @Service
 public class VehicleService {
 
-    private final VehicleRepository repo;
+  private final VehicleRepository repo;
 
-    public VehicleService(VehicleRepository repo) {
-        this.repo = repo;
-    }
+  public VehicleService(VehicleRepository repo) {
+    this.repo = repo;
+  }
 
-    public Vehicle get(String vin) {
-        return repo.findByVin(vin).orElseThrow(() -> ApiException.notFound("vehicle"));
-    }
+  public Vehicle get(String vin) {
+    return repo.findByVin(vin).orElseThrow(() -> ApiException.notFound("vehicle"));
+  }
 }

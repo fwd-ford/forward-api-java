@@ -14,14 +14,14 @@ import com.fwdford.forwardapi.service.VehicleService;
 @RequestMapping("/api/v1/vehicles")
 public class VehicleController {
 
-    private final VehicleService service;
+  private final VehicleService service;
 
-    public VehicleController(VehicleService service) {
-        this.service = service;
-    }
+  public VehicleController(VehicleService service) {
+    this.service = service;
+  }
 
-    @GetMapping("/{vin}")
-    public Vehicle get(@PathVariable String vin) {
-        return service.get(Validations.validateVin(vin));
-    }
+  @GetMapping("/{vin}")
+  public Vehicle get(@PathVariable String vin) {
+    return service.get(Validations.validateVin(vin));
+  }
 }

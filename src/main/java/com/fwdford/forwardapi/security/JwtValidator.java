@@ -5,5 +5,5 @@ package com.fwdford.forwardapi.security;
 import java.util.Map;
 
 public interface JwtValidator {
-    Map<String, Object> validate(String rawToken) throws Exception;
+  Map<String, Object> validate(String rawToken) throws Exception;
 }

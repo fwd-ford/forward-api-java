@@ -6,6 +6,11 @@ package com.fwdford.forwardapi.security;
 import java.io.IOException;
 import java.util.Map;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -15,95 +20,101 @@ import com.fwdford.forwardapi.config.AppProperties;
 import com.fwdford.forwardapi.web.AuthPrincipal;
 import com.fwdford.forwardapi.web.WebAttrs;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
 @Component
 public class AuthFilter extends OncePerRequestFilter {
 
-    private final JwtValidator validator;
-    private final AppProperties props;
-    private final ObjectMapper mapper = new ObjectMapper();
+  private final JwtValidator validator;
+  private final AppProperties props;
+  private final ObjectMapper mapper = new ObjectMapper();
 
-    public AuthFilter(JwtValidator validator, AppProperties props) {
-        this.validator = validator;
-        this.props = props;
+  public AuthFilter(JwtValidator validator, AppProperties props) {
+    this.validator = validator;
+    this.props = props;
+  }
+
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest req) {
+    String path = req.getRequestURI();
+    if (path.equals("/health") || path.equals("/ready")) {
+      return true;
+    }
+    if (path.startsWith("/actuator/")) {
+      return true;
+    }
+    // WSDL discovery is public; only the SOAP POST itself requires auth.
+    // A descoberta do WSDL eh publica; somente o POST SOAP exige auth.
+    if (path.equals("/soap/vehicles.wsdl")) {
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
+      throws ServletException, IOException {
+
+    // When no validator is configured we let requests through (dev mode).
+    // Quando nao ha validador configurado, passa direto (modo dev).
+    if (validator == null && (props.internalApiKey() == null || props.internalApiKey().isEmpty())) {
+      chain.doFilter(req, resp);
+      return;
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest req) {
-        String path = req.getRequestURI();
-        if (path.equals("/health") || path.equals("/ready")) return true;
-        if (path.startsWith("/actuator/")) return true;
-        // WSDL discovery is public; only the SOAP POST itself requires auth.
-        // A descoberta do WSDL eh publica; somente o POST SOAP exige auth.
-        if (path.equals("/soap/vehicles.wsdl")) return true;
-        return false;
+    String apiKey = req.getHeader("X-API-Key");
+    if (props.internalApiKey() != null
+        && !props.internalApiKey().isEmpty()
+        && props.internalApiKey().equals(apiKey)) {
+      req.setAttribute(WebAttrs.PRINCIPAL, new AuthPrincipal("internal", "admin"));
+      chain.doFilter(req, resp);
+      return;
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
-            throws ServletException, IOException {
+    String authz = req.getHeader("Authorization");
+    if (authz == null || !authz.startsWith("Bearer ")) {
+      writeUnauthorized(resp);
+      return;
+    }
+    String raw = authz.substring("Bearer ".length()).trim();
 
-        // When no validator is configured we let requests through (dev mode).
-        // Quando nao ha validador configurado, passa direto (modo dev).
-        if (validator == null && (props.internalApiKey() == null || props.internalApiKey().isEmpty())) {
-            chain.doFilter(req, resp);
-            return;
-        }
-
-        String apiKey = req.getHeader("X-API-Key");
-        if (props.internalApiKey() != null && !props.internalApiKey().isEmpty()
-                && props.internalApiKey().equals(apiKey)) {
-            req.setAttribute(WebAttrs.PRINCIPAL, new AuthPrincipal("internal", "admin"));
-            chain.doFilter(req, resp);
-            return;
-        }
-
-        String authz = req.getHeader("Authorization");
-        if (authz == null || !authz.startsWith("Bearer ")) {
-            writeUnauthorized(resp);
-            return;
-        }
-        String raw = authz.substring("Bearer ".length()).trim();
-
-        Map<String, Object> claims;
-        try {
-            if (validator == null) {
-                writeUnauthorized(resp);
-                return;
-            }
-            claims = validator.validate(raw);
-        } catch (Exception ex) {
-            writeUnauthorized(resp);
-            return;
-        }
-
-        String sub  = asString(claims.get("sub"));
-        String role = asString(claims.get("role"));
-        if (claims.get("app_metadata") instanceof Map<?, ?> amd) {
-            Object r = amd.get("role");
-            if (r instanceof String s && !s.isEmpty()) role = s;
-        }
-        req.setAttribute(WebAttrs.PRINCIPAL, new AuthPrincipal(sub, role));
-        chain.doFilter(req, resp);
+    Map<String, Object> claims;
+    try {
+      if (validator == null) {
+        writeUnauthorized(resp);
+        return;
+      }
+      claims = validator.validate(raw);
+    } catch (Exception ex) {
+      writeUnauthorized(resp);
+      return;
     }
 
-    private static String asString(Object v) {
-        return v instanceof String s ? s : null;
+    String sub = asString(claims.get("sub"));
+    String role = asString(claims.get("role"));
+    if (claims.get("app_metadata") instanceof Map<?, ?> amd) {
+      Object r = amd.get("role");
+      if (r instanceof String s && !s.isEmpty()) {
+        role = s;
+      }
     }
+    req.setAttribute(WebAttrs.PRINCIPAL, new AuthPrincipal(sub, role));
+    chain.doFilter(req, resp);
+  }
 
-    private void writeUnauthorized(HttpServletResponse resp) throws IOException {
-        resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        resp.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-        var body = Map.of(
-                "type",   "about:blank",
-                "title",  "Nao autenticado",
-                "status", 401,
-                "detail", "Token ausente ou invalido.",
-                "code",   "unauthorized");
-        resp.getWriter().write(mapper.writeValueAsString(body));
-    }
+  private static String asString(Object v) {
+    return v instanceof String s ? s : null;
+  }
+
+  private void writeUnauthorized(HttpServletResponse resp) throws IOException {
+    resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    resp.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+    var body =
+        Map.of(
+            "type", "about:blank",
+            "title", "Nao autenticado",
+            "status", 401,
+            "detail", "Token ausente ou invalido.",
+            "code", "unauthorized");
+    resp.getWriter().write(mapper.writeValueAsString(body));
+  }
 }

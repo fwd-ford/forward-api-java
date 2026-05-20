@@ -10,13 +10,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Vehicle(
-        String vin,
-        @JsonProperty("customer_id") String customerId,
-        String model,
-        int year,
-        String version,
-        String color,
-        boolean discontinued,
-        @JsonProperty("purchase_date") LocalDate purchaseDate,
-        @JsonProperty("last_service_at") OffsetDateTime lastServiceAt
-) {}
+    String vin,
+    @JsonProperty("customer_id") String customerId,
+    String model,
+    int year,
+    String version,
+    String color,
+    boolean discontinued,
+    @JsonProperty("purchase_date") LocalDate purchaseDate,
+    @JsonProperty("last_service_at") OffsetDateTime lastServiceAt) {}

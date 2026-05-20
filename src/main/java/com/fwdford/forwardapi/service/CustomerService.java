@@ -12,23 +12,23 @@ import com.fwdford.forwardapi.repository.CustomerRepository;
 @Service
 public class CustomerService {
 
-    private final CustomerRepository repo;
+  private final CustomerRepository repo;
 
-    public CustomerService(CustomerRepository repo) {
-        this.repo = repo;
-    }
+  public CustomerService(CustomerRepository repo) {
+    this.repo = repo;
+  }
 
-    public Customer get(String id, String callerSub, String callerRole) {
-        if (!canRead(id, callerSub, callerRole)) {
-            throw ApiException.forbidden();
-        }
-        return repo.findById(id).orElseThrow(() -> ApiException.notFound("customer"));
+  public Customer get(String id, String callerSub, String callerRole) {
+    if (!canRead(id, callerSub, callerRole)) {
+      throw ApiException.forbidden();
     }
+    return repo.findById(id).orElseThrow(() -> ApiException.notFound("customer"));
+  }
 
-    private boolean canRead(String id, String sub, String role) {
-        if ("analyst".equals(role) || "admin".equals(role) || "dealer".equals(role)) {
-            return true;
-        }
-        return "user".equals(role) && id.equals(sub);
+  private boolean canRead(String id, String sub, String role) {
+    if ("analyst".equals(role) || "admin".equals(role) || "dealer".equals(role)) {
+      return true;
     }
+    return "user".equals(role) && id.equals(sub);
+  }
 }

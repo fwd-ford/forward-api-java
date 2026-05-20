@@ -13,19 +13,23 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, AuthFilter authFilter) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
-                .formLogin(f -> f.disable())
-                .httpBasic(b -> b.disable())
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health", "/ready", "/actuator/**").permitAll()
-                        .requestMatchers("/soap/vehicles.wsdl").permitAll()
-                        .anyRequest().permitAll())
-                .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http, AuthFilter authFilter)
+      throws Exception {
+    http.csrf(csrf -> csrf.disable())
+        .formLogin(f -> f.disable())
+        .httpBasic(b -> b.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers("/health", "/ready", "/actuator/**")
+                    .permitAll()
+                    .requestMatchers("/soap/vehicles.wsdl")
+                    .permitAll()
+                    .anyRequest()
+                    .permitAll())
+        .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+    return http.build();
+  }
 }

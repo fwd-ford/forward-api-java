@@ -9,12 +9,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Customer(
-        String id,
-        @JsonProperty("full_name") String fullName,
-        String email,
-        String phone,
-        String city,
-        String state,
-        @JsonProperty("opt_in_whatsapp") boolean optInWhatsApp,
-        @JsonProperty("created_at") OffsetDateTime createdAt
-) {}
+    String id,
+    @JsonProperty("full_name") String fullName,
+    String email,
+    String phone,
+    String city,
+    String state,
+    @JsonProperty("opt_in_whatsapp") boolean optInWhatsApp,
+    @JsonProperty("created_at") OffsetDateTime createdAt) {}

@@ -13,20 +13,22 @@ import com.fwdford.forwardapi.config.AppProperties;
 @Configuration
 public class JwtValidatorFactory {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtValidatorFactory.class);
+  private static final Logger log = LoggerFactory.getLogger(JwtValidatorFactory.class);
 
-    @Bean
-    public JwtValidator jwtValidator(AppProperties props) throws Exception {
-        var jwt = props.jwt();
-        if (jwt != null && jwt.jwksUrl() != null && !jwt.jwksUrl().isBlank()) {
-            log.info("jwt validator: JWKS (asymmetric) url={}", jwt.jwksUrl());
-            return new JwksJwtValidator(jwt.jwksUrl());
-        }
-        if (jwt != null && jwt.secret() != null && !jwt.secret().isBlank()) {
-            log.info("jwt validator: HS256 (shared secret)");
-            return new Hs256JwtValidator(jwt.secret());
-        }
-        log.warn("jwt validator: DISABLED (no SUPABASE_JWT_SECRET or SUPABASE_JWKS_URL). Endpoints are open.");
-        return null;
+  @Bean
+  public JwtValidator jwtValidator(AppProperties props) throws Exception {
+    var jwt = props.jwt();
+    if (jwt != null && jwt.jwksUrl() != null && !jwt.jwksUrl().isBlank()) {
+      log.info("jwt validator: JWKS (asymmetric) url={}", jwt.jwksUrl());
+      return new JwksJwtValidator(jwt.jwksUrl());
     }
+    if (jwt != null && jwt.secret() != null && !jwt.secret().isBlank()) {
+      log.info("jwt validator: HS256 (shared secret)");
+      return new Hs256JwtValidator(jwt.secret());
+    }
+    log.warn(
+        "jwt validator: DISABLED (no SUPABASE_JWT_SECRET or SUPABASE_JWKS_URL). Endpoints are"
+            + " open.");
+    return null;
+  }
 }

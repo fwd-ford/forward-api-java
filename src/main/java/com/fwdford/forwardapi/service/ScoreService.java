@@ -11,16 +11,18 @@ import com.fwdford.forwardapi.repository.ScoreRepository;
 @Service
 public class ScoreService {
 
-    private final ScoreRepository repo;
+  private final ScoreRepository repo;
 
-    public ScoreService(ScoreRepository repo) {
-        this.repo = repo;
-    }
+  public ScoreService(ScoreRepository repo) {
+    this.repo = repo;
+  }
 
-    public ChurnScore getCurrent(String customerId, String callerRole) {
-        if (!"analyst".equals(callerRole) && !"admin".equals(callerRole) && !"dealer".equals(callerRole)) {
-            throw ApiException.forbidden();
-        }
-        return repo.findCurrentByCustomer(customerId).orElseThrow(() -> ApiException.notFound("score"));
+  public ChurnScore getCurrent(String customerId, String callerRole) {
+    if (!"analyst".equals(callerRole)
+        && !"admin".equals(callerRole)
+        && !"dealer".equals(callerRole)) {
+      throw ApiException.forbidden();
     }
+    return repo.findCurrentByCustomer(customerId).orElseThrow(() -> ApiException.notFound("score"));
+  }
 }

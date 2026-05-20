@@ -13,13 +13,13 @@ import com.fwdford.forwardapi.repository.LeadRepository;
 @Service
 public class LeadService {
 
-    private final LeadRepository repo;
+  private final LeadRepository repo;
 
-    public LeadService(LeadRepository repo) {
-        this.repo = repo;
-    }
+  public LeadService(LeadRepository repo) {
+    this.repo = repo;
+  }
 
-    public List<Lead> list(LeadFilter filter) {
-        return repo.list(filter);
-    }
+  public List<Lead> list(LeadFilter filter) {
+    return repo.list(filter);
+  }
 }

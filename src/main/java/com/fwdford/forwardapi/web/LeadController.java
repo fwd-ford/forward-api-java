@@ -17,29 +17,28 @@ import com.fwdford.forwardapi.service.LeadService;
 @RequestMapping("/api/v1/leads")
 public class LeadController {
 
-    private static final List<String> STATUSES = List.of(
-            "new", "assigned", "contacted", "converted", "lost", "expired"
-    );
+  private static final List<String> STATUSES =
+      List.of("new", "assigned", "contacted", "converted", "lost", "expired");
 
-    private final LeadService service;
+  private final LeadService service;
 
-    public LeadController(LeadService service) {
-        this.service = service;
+  public LeadController(LeadService service) {
+    this.service = service;
+  }
+
+  @GetMapping
+  public List<Lead> list(
+      @RequestParam(name = "dealer_id", required = false) String dealerId,
+      @RequestParam(name = "status", required = false) String status,
+      @RequestParam(name = "limit", required = false) String limit) {
+
+    String validDealer = "";
+    if (dealerId != null && !dealerId.isEmpty()) {
+      validDealer = Validations.validateUuid("dealer_id", dealerId);
     }
+    String validStatus = Validations.validateEnum("status", status, STATUSES);
+    int validLimit = Validations.validateLimit(limit, 50, 200);
 
-    @GetMapping
-    public List<Lead> list(
-            @RequestParam(name = "dealer_id", required = false) String dealerId,
-            @RequestParam(name = "status",    required = false) String status,
-            @RequestParam(name = "limit",     required = false) String limit) {
-
-        String validDealer = "";
-        if (dealerId != null && !dealerId.isEmpty()) {
-            validDealer = Validations.validateUuid("dealer_id", dealerId);
-        }
-        String validStatus = Validations.validateEnum("status", status, STATUSES);
-        int validLimit     = Validations.validateLimit(limit, 50, 200);
-
-        return service.list(new LeadFilter(validDealer, validStatus, validLimit));
-    }
+    return service.list(new LeadFilter(validDealer, validStatus, validLimit));
+  }
 }

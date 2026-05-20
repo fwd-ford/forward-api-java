@@ -12,18 +12,14 @@ import io.jsonwebtoken.Jwts;
 
 public class Hs256JwtValidator implements JwtValidator {
 
-    private final SecretKey key;
+  private final SecretKey key;
 
-    public Hs256JwtValidator(String secret) {
-        this.key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-    }
+  public Hs256JwtValidator(String secret) {
+    this.key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+  }
 
-    @Override
-    public Map<String, Object> validate(String rawToken) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(rawToken)
-                .getPayload();
-    }
+  @Override
+  public Map<String, Object> validate(String rawToken) {
+    return Jwts.parser().verifyWith(key).build().parseSignedClaims(rawToken).getPayload();
+  }
 }

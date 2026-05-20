@@ -15,17 +15,17 @@ import com.fwdford.forwardapi.config.AppProperties;
 @Configuration
 public class CorsConfig {
 
-    @Bean
-    public CorsFilter corsFilter(AppProperties props) {
-        CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(props.allowedOrigins());
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id", "X-API-Key"));
-        cfg.setAllowCredentials(true);
-        cfg.setMaxAge(600L);
+  @Bean
+  public CorsFilter corsFilter(AppProperties props) {
+    CorsConfiguration cfg = new CorsConfiguration();
+    cfg.setAllowedOrigins(props.allowedOrigins());
+    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id", "X-API-Key"));
+    cfg.setAllowCredentials(true);
+    cfg.setMaxAge(600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
-        return new CorsFilter(source);
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", cfg);
+    return new CorsFilter(source);
+  }
 }
