@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+        xmlns="https://github.com/spotbugs/filter/3.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/master/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Generated sources are out of project control. -->
+    <Match>
+        <Class name="~.*\.generated\..*"/>
+    </Match>
+
+    <!-- Spring controllers/services intentionally expose internal mutable references via DI. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!--
+      CSRF intentionally disabled for stateless JWT API.
+      CSRF only matters for cookie-session auth; JWT bearer tokens require no CSRF defense.
+      Documented decision - see SecurityConfig for the authentication model.
+    -->
+    <Match>
+        <Class name="com.fwdford.forwardapi.security.SecurityConfig"/>
+        <Bug pattern="SPRING_CSRF_PROTECTION_DISABLED"/>
+    </Match>
+
+    <!-- Spring @Configuration beans may throw during init - false positive on framework pattern. -->
+    <Match>
+        <Class name="com.fwdford.forwardapi.soap.WebServiceConfig"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+</FindBugsFilter>

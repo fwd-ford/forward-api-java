@@ -23,6 +23,11 @@
         <bucket4j.version>8.7.0</bucket4j.version>
         <logstash-logback.version>7.4</logstash-logback.version>
         <nimbus-jose.version>9.40</nimbus-jose.version>
+        <spotless.version>2.43.0</spotless.version>
+        <checkstyle.plugin.version>3.4.0</checkstyle.plugin.version>
+        <checkstyle.version>10.17.0</checkstyle.version>
+        <spotbugs.plugin.version>4.8.6.4</spotbugs.plugin.version>
+        <dependency-check.version>10.0.4</dependency-check.version>
     </properties>
 
     <dependencies>
@@ -114,6 +119,120 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.22.0</version>
+                            <style>GOOGLE</style>
+                            <reflowLongStrings>true</reflowLongStrings>
+                        </googleJavaFormat>
+                        <importOrder>
+                            <order>java,javax,jakarta,org,com,</order>
+                        </importOrder>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>quality</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <version>${checkstyle.plugin.version}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.puppycrawl.tools</groupId>
+                                <artifactId>checkstyle</artifactId>
+                                <version>${checkstyle.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <configLocation>checkstyle.xml</configLocation>
+                            <consoleOutput>true</consoleOutput>
+                            <failsOnError>true</failsOnError>
+                            <violationSeverity>warning</violationSeverity>
+                            <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>checkstyle-validate</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>${spotbugs.plugin.version}</version>
+                        <configuration>
+                            <effort>Max</effort>
+                            <threshold>Medium</threshold>
+                            <failOnError>true</failOnError>
+                            <includeFilterFile>spotbugs-include.xml</includeFilterFile>
+                            <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                            <plugins>
+                                <plugin>
+                                    <groupId>com.h3xstream.findsecbugs</groupId>
+                                    <artifactId>findsecbugs-plugin</artifactId>
+                                    <version>1.13.0</version>
+                                </plugin>
+                            </plugins>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>spotbugs-check</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>security</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>${dependency-check.version}</version>
+                        <configuration>
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <skipProvidedScope>true</skipProvidedScope>
+                            <skipTestScope>true</skipTestScope>
+                            <suppressionFile>dependency-check-suppressions.xml</suppressionFile>
+                            <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>dependency-check</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
