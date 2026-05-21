@@ -24,6 +24,7 @@
         <logstash-logback.version>7.4</logstash-logback.version>
         <nimbus-jose.version>9.40</nimbus-jose.version>
         <postgresql.version>42.7.11</postgresql.version>
+        <tomcat.version>10.1.55</tomcat.version>
         <spotless.version>2.43.0</spotless.version>
         <checkstyle.plugin.version>3.4.0</checkstyle.plugin.version>
         <checkstyle.version>10.17.0</checkstyle.version>
