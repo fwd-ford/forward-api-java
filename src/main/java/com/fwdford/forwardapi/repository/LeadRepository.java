@@ -51,7 +51,7 @@ public class LeadRepository {
                 rs.getString("priority"),
                 rs.getString("status"),
                 rs.getString("reason"),
-                (Double) rs.getObject("expected_value_brl"),
+                rs.getObject("expected_value_brl") instanceof java.math.BigDecimal bd ? bd.doubleValue() : null,
                 rs.getObject("created_at", java.time.OffsetDateTime.class),
                 rs.getObject("converted_at", java.time.OffsetDateTime.class)
         ));

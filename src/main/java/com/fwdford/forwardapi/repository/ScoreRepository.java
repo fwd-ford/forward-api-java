@@ -37,7 +37,7 @@ public class ScoreRepository {
                 rs.getString("model_version"),
                 rs.getString("segment"),
                 rs.getDouble("churn_probability"),
-                (Double) rs.getObject("confidence"),
+                rs.getObject("confidence") instanceof java.math.BigDecimal bd ? bd.doubleValue() : null,
                 rs.getObject("computed_at", java.time.OffsetDateTime.class)
         )).stream().findFirst();
     }
