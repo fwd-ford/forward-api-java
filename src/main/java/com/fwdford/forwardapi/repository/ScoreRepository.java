@@ -28,6 +28,7 @@ public class ScoreRepository {
         this.jdbc = jdbc;
     }
 
+<<<<<<< Updated upstream
     public Optional<ChurnScore> findCurrentByCustomer(String customerId) {
         var params = new MapSqlParameterSource("customerId", java.util.UUID.fromString(customerId));
         return jdbc.query(SELECT_CURRENT, params, (rs, idx) -> new ChurnScore(
@@ -41,4 +42,25 @@ public class ScoreRepository {
                 rs.getObject("computed_at", java.time.OffsetDateTime.class)
         )).stream().findFirst();
     }
+=======
+  public Optional<ChurnScore> findCurrentByCustomer(String customerId) {
+    var params = new MapSqlParameterSource("customerId", java.util.UUID.fromString(customerId));
+    return jdbc
+        .query(
+            SELECT_CURRENT,
+            params,
+            (rs, idx) ->
+                new ChurnScore(
+                    rs.getString("id"),
+                    rs.getString("customer_id"),
+                    rs.getString("vin"),
+                    rs.getString("model_version"),
+                    rs.getString("segment"),
+                    rs.getDouble("churn_probability"),
+                    rs.getObject("confidence") instanceof java.math.BigDecimal bd ? bd.doubleValue() : null,
+                    rs.getObject("computed_at", java.time.OffsetDateTime.class)))
+        .stream()
+        .findFirst();
+  }
+>>>>>>> Stashed changes
 }

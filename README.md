@@ -1,15 +1,15 @@
 # forward-api-java
 
 ![org](https://img.shields.io/badge/org-fwd--ford-blue?style=flat-square)
-![stack](https://img.shields.io/badge/stack-Java_17_·_Spring_Boot_3-333?style=flat-square)
+![stack](https://img.shields.io/badge/stack-Java_17_·_Spring_Boot_3.5-333?style=flat-square)
 
-HTTP and SOAP API for **ForwardService**. Java 17 + Spring Boot 3.2, built to
+HTTP and SOAP API for **ForwardService**. Java 17 + Spring Boot 3.5, built to
 satisfy the SOA discipline requirement of the Ford x FIAP 2026 Challenge.
 
 ## Stack
 
 - Java 17 (Eclipse Temurin)
-- Spring Boot 3.2 (Web, Web Services, Security, Validation, JDBC, Actuator)
+- Spring Boot 3.5.14 (Web, Web Services, Security, Validation, JDBC, Actuator)
 - PostgreSQL via HikariCP
 - Bucket4j rate limiting
 - Nimbus JOSE + JJWT for JWT validation (HS256 + JWKS)
@@ -48,7 +48,9 @@ src/main/resources/
 | GET    | `/soap/vehicles.wsdl`             | no   | WSDL discovery          |
 | POST   | `/soap/vehicles`                  | yes  | SOAP 1.1 `GetVehicle`   |
 
-Port: `8080` (default). Override with `PORT=...`.
+Port: `8080` (default). Override with `PORT=...`. When running via the
+`forward-infra` docker compose, the container is published on host port
+`18080` so the native dev server can keep `8080` free.
 
 ## Quick start
 
@@ -68,3 +70,15 @@ make test      # JUnit tests via mvnw
 make build     # package target/forward-api.jar
 make run       # live server
 ```
+
+## Security
+
+Reusable workflows from
+[fwd-ford/.github](https://github.com/fwd-ford/.github) run on every push:
+
+- `java-quality.yml` - Spotless, Checkstyle, SpotBugs, JUnit.
+- `java-security.yml` - Trivy filesystem scan and OWASP Dependency Check.
+- `secrets-scan.yml` - gitleaks on changed files.
+
+Spring Boot was bumped from 3.2.5 to 3.5.14 in May 2026, closing 27 CVEs.
+Unfixed advisories are tracked in `.trivyignore`.
