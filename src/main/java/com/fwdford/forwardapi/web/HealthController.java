@@ -4,7 +4,6 @@ package com.fwdford.forwardapi.web;
 
 import java.time.Instant;
 import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,19 +11,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HealthController {
 
-    private final String version;
+  private final String version;
 
-    public HealthController(@Value("${forward.version:dev}") String version) {
-        this.version = version;
-    }
+  public HealthController(@Value("${forward.version:dev}") String version) {
+    this.version = version;
+  }
 
-    @GetMapping({"/health", "/ready"})
-    public Map<String, Object> health() {
-        return Map.of(
-                "status", "ok",
-                "timestamp", Instant.now(),
-                "service", "forward-api",
-                "version", version
-        );
-    }
+  @GetMapping({"/health", "/ready"})
+  public Map<String, Object> health() {
+    return Map.of(
+        "status", "ok", "timestamp", Instant.now(), "service", "forward-api", "version", version);
+  }
 }

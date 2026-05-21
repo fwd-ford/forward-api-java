@@ -1,0 +1,22 @@
+# Trivy CVE allowlist for forward-api-java
+# Each entry must include the CVE id, why it is suppressed, and a review date.
+
+# --- Tomcat 10.1.55 - upstream has no fix available yet ---
+# These CVEs were disclosed after the current Tomcat 10.1.55 release.
+# Spring Boot 3.5.14 ships 10.1.54; pinning to 10.1.55 clears CVE-2026-41293.
+# Re-check on every Spring Boot bump.
+
+# DEPRECATED CVE - kept for completeness, no fix needed
+CVE-2026-43512
+
+# Authorization bypass via multiple HTTP methods - no upstream fix yet
+# Revisit by 2026-08-01
+CVE-2026-43515
+
+# Resource allocation without throttling - no upstream fix yet
+# Revisit by 2026-08-01
+CVE-2026-41284
+
+# HTTP auth header exposure to unexpected hosts - no upstream fix yet
+# Revisit by 2026-08-01
+CVE-2026-42498

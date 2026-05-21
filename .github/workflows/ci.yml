@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  quality:
+    name: Code quality
+    uses: fwd-ford/.github/.github/workflows/java-quality.yml@main
+    with:
+      java-version: "17"
+
+  security:
+    name: Security
+    uses: fwd-ford/.github/.github/workflows/java-security.yml@main
+    with:
+      java-version: "17"
+
+  secrets:
+    name: Secrets
+    uses: fwd-ford/.github/.github/workflows/secrets-scan.yml@main

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <!--
+      SLF4J logger fields conventionally named "log" lowercase.
+      Suppressing ConstantName for these to avoid renaming a project-wide convention.
+    -->
+    <suppress checks="ConstantName" message="O nome 'log'"/>
+    <suppress checks="ConstantName" message="Name 'log'"/>
+</suppressions>

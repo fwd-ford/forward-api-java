@@ -1,0 +1,17 @@
+# Gitleaks config for forward-api-java
+# Inherits default rules and adds project-specific allowlists.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist - test fixtures and config templates"
+paths = [
+    '''(?i)src/test/resources/.*\.ya?ml$''',
+    '''(?i)src/test/resources/.*\.properties$''',
+    '''application\.yml\.example$''',
+    '''application-test\.ya?ml$''',
+]
+regexes = [
+    '''(?i)example|sample|dummy|fixture|placeholder|change-?me''',
+]
