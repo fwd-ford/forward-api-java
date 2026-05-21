@@ -1,0 +1,14 @@
+# Shell scripts and Unix-only files must always be LF.
+# Mantem LF nesses arquivos independente do OS local.
+*.sh   text eol=lf
+mvnw   text eol=lf
+
+# Windows-only files stay CRLF.
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+mvnw.cmd text eol=crlf
+
+# Binary safety (no normalization).
+*.jar  binary
+*.png  binary
+*.jpg  binary
