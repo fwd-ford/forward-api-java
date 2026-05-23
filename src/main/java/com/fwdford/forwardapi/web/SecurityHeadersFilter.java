@@ -24,8 +24,24 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
     resp.setHeader("X-Frame-Options", "DENY");
     resp.setHeader("Referrer-Policy", "no-referrer");
     resp.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-    resp.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    resp.setHeader("Content-Security-Policy", cspFor(req.getRequestURI()));
     resp.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
     chain.doFilter(req, resp);
+  }
+
+  // Swagger UI ships its own JS/CSS bundle and fetches /v3/api-docs over XHR.
+  // The default lockdown CSP blocks all of that, so we relax it for those paths only.
+  // Swagger UI carrega bundle proprio e faz XHR; relaxamos a CSP so para esses paths.
+  private static String cspFor(String path) {
+    if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")) {
+      return "default-src 'self'; "
+          + "script-src 'self' 'unsafe-inline'; "
+          + "style-src 'self' 'unsafe-inline'; "
+          + "img-src 'self' data:; "
+          + "font-src 'self'; "
+          + "connect-src 'self'; "
+          + "frame-ancestors 'none'";
+    }
+    return "default-src 'none'; frame-ancestors 'none'";
   }
 }
