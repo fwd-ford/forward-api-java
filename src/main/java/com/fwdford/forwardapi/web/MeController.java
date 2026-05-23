@@ -34,8 +34,7 @@ public class MeController {
             @Content(
                 schema =
                     @Schema(
-                        example =
-                            "{\"sub\":\"f7b3...\",\"role\":\"admin\"}",
+                        example = "{\"sub\":\"f7b3...\",\"role\":\"admin\"}",
                         type = "object"))),
     @ApiResponse(
         responseCode = "401",

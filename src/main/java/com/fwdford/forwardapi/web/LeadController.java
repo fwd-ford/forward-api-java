@@ -55,7 +55,9 @@ public class LeadController {
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public List<Lead> list(
-      @Parameter(description = "Filter by dealer UUID", example = "11111111-1111-1111-1111-111111111111")
+      @Parameter(
+              description = "Filter by dealer UUID",
+              example = "11111111-1111-1111-1111-111111111111")
           @RequestParam(name = "dealer_id", required = false)
           String dealerId,
       @Parameter(

@@ -33,8 +33,8 @@ public class CustomerController {
   @Operation(
       summary = "Get customer by id",
       description =
-          "Returns the customer profile for the given UUID. "
-              + "RBAC: end users can only read their own record; analyst, admin and dealer roles can read anyone.")
+          "Returns the customer profile for the given UUID. RBAC: end users can only read their own"
+              + " record; analyst, admin and dealer roles can read anyone.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",

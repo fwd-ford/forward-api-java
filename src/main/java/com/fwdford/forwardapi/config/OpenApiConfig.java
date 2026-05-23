@@ -26,8 +26,8 @@ public class OpenApiConfig {
         new Info()
             .title("Forward API")
             .description(
-                "HTTP and SOAP API for ForwardService — Ford x FIAP 2026 Challenge. "
-                    + "Provides customer, vehicle, lead and churn score data for the dealer network.")
+                "HTTP and SOAP API for ForwardService — Ford x FIAP 2026 Challenge. Provides"
+                    + " customer, vehicle, lead and churn score data for the dealer network.")
             .version("0.1.0")
             .contact(
                 new Contact()
