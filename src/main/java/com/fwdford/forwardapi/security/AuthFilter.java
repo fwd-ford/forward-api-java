@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,8 +25,8 @@ public class AuthFilter extends OncePerRequestFilter {
   private final AppProperties props;
   private final ObjectMapper mapper = new ObjectMapper();
 
-  public AuthFilter(JwtValidator validator, AppProperties props) {
-    this.validator = validator;
+  public AuthFilter(Optional<JwtValidator> validator, AppProperties props) {
+    this.validator = validator.orElse(null);
     this.props = props;
   }
 
@@ -41,6 +42,13 @@ public class AuthFilter extends OncePerRequestFilter {
     // WSDL discovery is public; only the SOAP POST itself requires auth.
     // A descoberta do WSDL eh publica; somente o POST SOAP exige auth.
     if (path.equals("/soap/vehicles.wsdl")) {
+      return true;
+    }
+    // OpenAPI/Swagger UI is public so the contract can be browsed without auth.
+    // OpenAPI/Swagger UI sao publicos para permitir leitura do contrato sem auth.
+    if (path.startsWith("/swagger-ui")
+        || path.startsWith("/v3/api-docs")
+        || path.equals("/swagger-ui.html")) {
       return true;
     }
     return false;
