@@ -5,7 +5,7 @@ target/
 *.ear
 dependency-reduced-pom.xml
 
-# Maven wrapper local install
+# Maven wrapper local install.
 .mvn/wrapper/maven-wrapper.jar
 
 # IDEs
