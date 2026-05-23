@@ -29,7 +29,6 @@
         <checkstyle.plugin.version>3.4.0</checkstyle.plugin.version>
         <checkstyle.version>10.17.0</checkstyle.version>
         <spotbugs.plugin.version>4.8.6.4</spotbugs.plugin.version>
-        <dependency-check.version>10.0.4</dependency-check.version>
     </properties>
 
     <dependencies>
@@ -206,33 +205,5 @@
             </build>
         </profile>
 
-        <profile>
-            <id>security</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.owasp</groupId>
-                        <artifactId>dependency-check-maven</artifactId>
-                        <version>${dependency-check.version}</version>
-                        <configuration>
-                            <failBuildOnCVSS>7</failBuildOnCVSS>
-                            <skipProvidedScope>true</skipProvidedScope>
-                            <skipTestScope>true</skipTestScope>
-                            <suppressionFile>dependency-check-suppressions.xml</suppressionFile>
-                            <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>dependency-check</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>check</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
     </profiles>
 </project>

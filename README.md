@@ -77,7 +77,7 @@ Reusable workflows from
 [fwd-ford/.github](https://github.com/fwd-ford/.github) run on every push:
 
 - `java-quality.yml` - Spotless, Checkstyle, SpotBugs, JUnit.
-- `java-security.yml` - Trivy filesystem scan and OWASP Dependency Check.
+- `java-security.yml` - Trivy filesystem scan (CVEs em deps via Trivy + Dependabot).
 - `secrets-scan.yml` - gitleaks on changed files.
 
 Spring Boot was bumped from 3.2.5 to 3.5.14 in May 2026, closing 27 CVEs.
