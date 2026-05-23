@@ -42,7 +42,8 @@ public class HealthController {
                       @Schema(
                           type = "object",
                           example =
-                              "{\"status\":\"ok\",\"timestamp\":\"2026-05-23T00:00:00Z\",\"service\":\"forward-api\",\"version\":\"0.1.0\"}"))))
+                              "{\"status\":\"ok\",\"timestamp\":\"2026-05-23T00:00:00Z\","
+                                  + "\"service\":\"forward-api\",\"version\":\"0.1.0\"}"))))
   public Map<String, Object> health() {
     return Map.of(
         "status", "ok", "timestamp", Instant.now(), "service", "forward-api", "version", version);
