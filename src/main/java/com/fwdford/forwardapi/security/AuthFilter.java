@@ -32,6 +32,12 @@ public class AuthFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest req) {
+    // CORS preflight is unauthenticated by design; tokens never travel on OPTIONS.
+    // Without this bypass the browser receives 401 before CORS headers are written.
+    // Preflight CORS nao carrega token por design; sem isso, browser toma 401.
+    if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
+      return true;
+    }
     String path = req.getRequestURI();
     if (path.equals("/health") || path.equals("/ready")) {
       return true;
