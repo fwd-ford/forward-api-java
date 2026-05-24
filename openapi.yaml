@@ -1,0 +1,418 @@
+openapi: 3.0.1
+info:
+  title: Forward API
+  description: "HTTP and SOAP API for ForwardService — Ford x FIAP 2026 Challenge.\
+    \ Provides customer, vehicle, lead and churn score data for the dealer network."
+  contact:
+    name: Forward Team
+    url: https://github.com/fwd-ford
+    email: dev@fwd-ford.com
+  license:
+    name: Proprietary
+  version: 0.1.0
+servers:
+- url: http://localhost:18080
+  description: Local Docker
+- url: http://localhost:8080
+  description: Local native (mvnw)
+- url: https://forward-api.fwd-ford.com
+  description: Production
+security:
+- bearerAuth: []
+- apiKey: []
+tags:
+- name: Health
+  description: Liveness and readiness probes (public).
+- name: Me
+  description: Current authenticated subject.
+- name: Customers
+  description: Customer profile lookup with RBAC.
+- name: Vehicles
+  description: Vehicle lookup by VIN.
+- name: Leads
+  description: Sales lead listing with optional filters.
+- name: Scores
+  description: Customer churn score lookup.
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Liveness and readiness probe
+      description: Public endpoint that confirms the process is up and returns the
+        running version. Does not test downstream dependencies. Mapped to both /health
+        and /ready.
+      operationId: health
+      responses:
+        "200":
+          description: Service is up
+          content:
+            '*/*':
+              schema:
+                type: object
+                example:
+                  status: ok
+                  timestamp: 2026-05-23T00:00:00Z
+                  service: forward-api
+                  version: 0.1.0
+      security: []
+  /ready:
+    get:
+      tags:
+      - Health
+      summary: Liveness and readiness probe
+      description: Public endpoint that confirms the process is up and returns the
+        running version. Does not test downstream dependencies. Mapped to both /health
+        and /ready.
+      operationId: health_1
+      responses:
+        "200":
+          description: Service is up
+          content:
+            '*/*':
+              schema:
+                type: object
+                example:
+                  status: ok
+                  timestamp: 2026-05-23T00:00:00Z
+                  service: forward-api
+                  version: 0.1.0
+      security: []
+  /api/v1/vehicles/{vin}:
+    get:
+      tags:
+      - Vehicles
+      summary: Get vehicle by VIN
+      description: "Returns vehicle data for the given 17-character VIN. VIN is validated\
+        \ against ISO 3779 (no I, O, Q)."
+      operationId: get
+      parameters:
+      - name: vin
+        in: path
+        description: 17-character Vehicle Identification Number
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Vehicle found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "404":
+          description: Vehicle not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Missing or invalid token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "400":
+          description: Invalid VIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/scores/{customerId}:
+    get:
+      tags:
+      - Scores
+      summary: Get current churn score for a customer
+      description: Returns the most recent churn score computed for the given customer.
+        RBAC is enforced inside the service layer.
+      operationId: get_1
+      parameters:
+      - name: customerId
+        in: path
+        description: Customer UUID
+        required: true
+        schema:
+          type: string
+      responses:
+        "404":
+          description: No score available for this customer
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden by RBAC
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "400":
+          description: Invalid customer UUID
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Missing or invalid token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "200":
+          description: Score found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ChurnScore"
+  /api/v1/me:
+    get:
+      tags:
+      - Me
+      summary: Get current subject
+      description: Returns the `sub` and `role` parsed from the validated JWT or X-API-Key.
+        Useful to confirm auth is working end-to-end.
+      operationId: me
+      responses:
+        "200":
+          description: Subject and role of the authenticated caller
+          content:
+            '*/*':
+              schema:
+                type: object
+                example:
+                  sub: f7b3...
+                  role: admin
+        "401":
+          description: Missing or invalid token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/leads:
+    get:
+      tags:
+      - Leads
+      summary: List leads
+      description: "Returns a paginated list of leads optionally filtered by dealer\
+        \ and status. Default limit is 50, maximum 200."
+      operationId: list
+      parameters:
+      - name: dealer_id
+        in: query
+        description: Filter by dealer UUID
+        required: false
+        schema:
+          type: string
+        example: 11111111-1111-1111-1111-111111111111
+      - name: status
+        in: query
+        description: Filter by status
+        required: false
+        schema:
+          type: string
+          enum:
+          - new
+          - assigned
+          - contacted
+          - converted
+          - lost
+          - expired
+      - name: limit
+        in: query
+        description: "Max items to return (default 50, max 200)"
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: List of leads (may be empty)
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+        "400":
+          description: "Invalid query parameter (dealer_id, status or limit)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Missing or invalid token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/customers/{id}:
+    get:
+      tags:
+      - Customers
+      summary: Get customer by id
+      description: "Returns the customer profile for the given UUID. RBAC: end users\
+        \ can only read their own record; analyst, admin and dealer roles can read\
+        \ anyone."
+      operationId: get_2
+      parameters:
+      - name: id
+        in: path
+        description: Customer UUID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Customer found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Customer not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "400":
+          description: Invalid UUID
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Forbidden by RBAC
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Missing or invalid token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+components:
+  schemas:
+    Vehicle:
+      type: object
+      properties:
+        vin:
+          type: string
+        customer_id:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+          format: int32
+        version:
+          type: string
+        color:
+          type: string
+        discontinued:
+          type: boolean
+        purchase_date:
+          type: string
+          format: date
+        last_service_at:
+          type: string
+          format: date-time
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties:
+            type: object
+    ChurnScore:
+      type: object
+      properties:
+        id:
+          type: string
+        customer_id:
+          type: string
+        vin:
+          type: string
+        model_version:
+          type: string
+        segment:
+          type: string
+        churn_probability:
+          type: number
+          format: double
+        confidence:
+          type: number
+          format: double
+        computed_at:
+          type: string
+          format: date-time
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+        customer_id:
+          type: string
+        vin:
+          type: string
+        dealer_id:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+        reason:
+          type: string
+        expected_value_brl:
+          type: number
+          format: double
+        created_at:
+          type: string
+          format: date-time
+        converted_at:
+          type: string
+          format: date-time
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        opt_in_whatsapp:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: Supabase JWT issued to authenticated users.
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      description: "Internal API key for server-to-server calls (N8N, cron)."
+      name: X-API-Key
+      in: header
