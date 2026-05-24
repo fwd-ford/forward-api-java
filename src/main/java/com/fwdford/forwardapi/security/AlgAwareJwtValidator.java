@@ -39,7 +39,9 @@ public class AlgAwareJwtValidator implements JwtValidator {
 
   private static String headerAlg(String rawToken) throws Exception {
     int dot = rawToken.indexOf('.');
-    if (dot <= 0) throw new IllegalArgumentException("malformed jwt: missing header");
+    if (dot <= 0) {
+      throw new IllegalArgumentException("malformed jwt: missing header");
+    }
     byte[] headerBytes = Base64.getUrlDecoder().decode(rawToken.substring(0, dot));
     Map<?, ?> header = MAPPER.readValue(new String(headerBytes, StandardCharsets.UTF_8), Map.class);
     Object alg = header.get("alg");
