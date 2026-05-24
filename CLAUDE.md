@@ -69,7 +69,7 @@ Go + Fiber implementation that was archived at
 - Input validation for UUIDs, VINs, enums, numeric limits — reject before hitting service.
 - CORS allowlist comes from `forward.allowed-origins`; wildcard is never accepted.
 - Security headers applied globally (HSTS, CSP, X-Frame-Options, etc).
-- HTTPS/TLS 1.2+ is a deployment concern (handled by Railway/reverse proxy).
+- HTTPS/TLS 1.2+ is a deployment concern (handled by Fly.io edge proxy in production; `fly.toml` enforces `force_https = true`).
 
 ## Build
 

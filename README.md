@@ -74,16 +74,75 @@ curl http://localhost:18080/v3/api-docs.yaml -o openapi.yaml
 cp openapi.yaml ../forward-docs/api/openapi.yaml
 ```
 
-## Quick start
+## Configuration
+
+All runtime values are environment-driven. Copy the template and fill in the
+secrets:
 
 ```bash
-./mvnw spring-boot:run
-# or
-make run
+cp .env.example .env
 ```
 
-The first `./mvnw` run downloads Apache Maven 3.9.6 automatically into
-`~/.m2/wrapper`, then builds and starts the server on port 8080.
+`.env` is gitignored. See [`.env.example`](.env.example) for the full list with
+inline documentation. Required vars at a glance:
+
+| Variable | Required | Notes |
+| -------- | -------- | ----- |
+| `DATABASE_URL` | yes | JDBC URL. Use Supabase pooler in cloud (`port 6543`, `sslmode=require`). |
+| `DATABASE_USER`, `DATABASE_PASSWORD` | yes | Credentials for the DB above. |
+| `SUPABASE_JWT_SECRET` **or** `SUPABASE_JWKS_URL` | yes | Pick HS256 secret OR JWKS URL. Both is allowed; `AlgAwareJwtValidator` picks per token. |
+| `SUPABASE_JWT_ISSUER` | yes (with JWKS) | Issuer base URL from Supabase dashboard. |
+| `INTERNAL_API_KEY` | optional | Pre-shared key for N8N / cron / smoke tests via `X-API-Key`. |
+| `ALLOWED_ORIGINS` | yes | CORS allowlist. Wildcard `*` is rejected by `SecurityConfig`. |
+
+How to get Supabase values (project FORD, slug `ysewoopjgdpvnkfhffgy`):
+
+```text
+Supabase Dashboard > Settings > API
+  - "JWT Settings" > "JWT Secret"        -> SUPABASE_JWT_SECRET
+  - "JWKS URL"                           -> SUPABASE_JWKS_URL
+  - "URL"                                -> SUPABASE_JWT_ISSUER
+```
+
+## Quick start
+
+### Option A: native + Supabase (recommended for full-stack work)
+
+```bash
+cp .env.example .env
+# Fill SUPABASE_JWT_SECRET, SUPABASE_JWKS_URL, SUPABASE_JWT_ISSUER, DATABASE_URL.
+./mvnw spring-boot:run
+```
+
+App listens on `http://localhost:8080`. JWT issued by the mobile app (or any
+Supabase-authed client) is validated against the configured secret / JWKS.
+
+### Option B: native + local Postgres via docker compose
+
+For backend-only iteration without Supabase auth (uses `INTERNAL_API_KEY` to
+bypass JWT for `X-API-Key` callers):
+
+```bash
+# In a separate terminal, start Postgres from forward-infra:
+cd ../forward-infra/docker && docker compose up -d postgres
+
+# Then in this repo:
+cp .env.example .env
+# Leave DATABASE_URL as the default (localhost:5432) and set INTERNAL_API_KEY.
+./mvnw spring-boot:run
+```
+
+### Option C: full stack in docker compose
+
+```bash
+cd ../forward-infra/docker && docker compose up -d
+# The API container is published on host port 18080 (8080 stays free for native dev).
+curl http://localhost:18080/health
+```
+
+The first `./mvnw` run downloads Apache Maven 3.9.6 into `~/.m2/wrapper`.
+On Windows without bash, use `mvnw.cmd` (note: known bug in the 3.3.2
+wrapper — prefer `bash mvnw ...` from Git Bash if available).
 
 ## Development
 
@@ -92,6 +151,44 @@ make test      # JUnit tests via mvnw
 make build     # package target/forward-api.jar
 make run       # live server
 ```
+
+Local checks that mirror CI:
+
+```bash
+./mvnw spotless:apply                  # auto-format (Windows: pin <lineEndings>UNIX</lineEndings>)
+./mvnw verify                          # Spotless + Checkstyle + SpotBugs + tests
+```
+
+## Deploy (Fly.io)
+
+Production is hosted on [Fly.io](https://fly.io) (app `forward-api-java`,
+region `gru`). Public configuration lives in [`fly.toml`](fly.toml); secrets
+are managed out-of-band:
+
+```bash
+# One-time login:
+flyctl auth login
+
+# Set runtime secrets (idempotent):
+flyctl secrets set \
+  DATABASE_URL='jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require' \
+  DATABASE_USER='postgres.ysewoopjgdpvnkfhffgy' \
+  DATABASE_PASSWORD='...' \
+  SUPABASE_JWT_SECRET='...' \
+  SUPABASE_JWKS_URL='https://ysewoopjgdpvnkfhffgy.supabase.co/auth/v1/keys' \
+  SUPABASE_JWT_ISSUER='https://ysewoopjgdpvnkfhffgy.supabase.co/auth/v1' \
+  INTERNAL_API_KEY='...' \
+  --app forward-api-java
+
+# Deploy current branch:
+flyctl deploy --remote-only --app forward-api-java
+
+# Tail logs:
+flyctl logs --app forward-api-java
+```
+
+Health check: `https://forward-api-java.fly.dev/health` (also wired into
+`[[http_service.checks]]` in `fly.toml`).
 
 ## Security
 
