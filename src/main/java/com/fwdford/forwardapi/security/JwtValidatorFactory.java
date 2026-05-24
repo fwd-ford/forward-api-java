@@ -17,13 +17,27 @@ public class JwtValidatorFactory {
   @Bean
   public JwtValidator jwtValidator(AppProperties props) throws Exception {
     var jwt = props.jwt();
-    if (jwt != null && jwt.jwksUrl() != null && !jwt.jwksUrl().isBlank()) {
-      log.info("jwt validator: JWKS (asymmetric) url={}", jwt.jwksUrl());
-      return new JwksJwtValidator(jwt.jwksUrl());
+    boolean hasJwks = jwt != null && jwt.jwksUrl() != null && !jwt.jwksUrl().isBlank();
+    boolean hasSecret = jwt != null && jwt.secret() != null && !jwt.secret().isBlank();
+
+    JwtValidator jwks = hasJwks ? new JwksJwtValidator(jwt.jwksUrl()) : null;
+    JwtValidator hs256 = hasSecret ? new Hs256JwtValidator(jwt.secret()) : null;
+
+    // Both configured: route per token header alg. Supabase projects emit HS256
+    // by default and RS256/ES256 only after migrating to asymmetric keys, so
+    // picking by alg keeps both flavors working from the same deploy.
+    // Ambos: roteia pelo header alg do token (HS256 default Supabase; RS256 apos migrar).
+    if (hasJwks && hasSecret) {
+      log.info("jwt validator: ALG-AWARE (HS256 + JWKS asymmetric) url={}", jwt.jwksUrl());
+      return new AlgAwareJwtValidator(hs256, jwks);
     }
-    if (jwt != null && jwt.secret() != null && !jwt.secret().isBlank()) {
+    if (hasJwks) {
+      log.info("jwt validator: JWKS (asymmetric) url={}", jwt.jwksUrl());
+      return jwks;
+    }
+    if (hasSecret) {
       log.info("jwt validator: HS256 (shared secret)");
-      return new Hs256JwtValidator(jwt.secret());
+      return hs256;
     }
     log.warn(
         "jwt validator: DISABLED (no SUPABASE_JWT_SECRET or SUPABASE_JWKS_URL). Endpoints are"
