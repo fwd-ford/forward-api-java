@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/leads")
+@RequestMapping(value = "/api/v1/leads", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Leads", description = "Sales lead listing with optional filters.")
 public class LeadController {
 
@@ -36,9 +37,10 @@ public class LeadController {
 
   @GetMapping
   @Operation(
+      operationId = "listLeads",
       summary = "List leads",
       description =
-          "Returns a paginated list of leads optionally filtered by dealer and status. "
+          "Returns a list of leads optionally filtered by dealer and status. "
               + "Default limit is 50, maximum 200.")
   @ApiResponses({
     @ApiResponse(
@@ -52,16 +54,21 @@ public class LeadController {
     @ApiResponse(
         responseCode = "401",
         description = "Missing or invalid token",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public List<Lead> list(
       @Parameter(
-              description = "Filter by dealer UUID",
+              description = "Filter by dealer UUID.",
+              schema = @Schema(format = "uuid"),
               example = "11111111-1111-1111-1111-111111111111")
           @RequestParam(name = "dealer_id", required = false)
           String dealerId,
       @Parameter(
-              description = "Filter by status",
+              description = "Filter by lead status.",
               schema =
                   @Schema(
                       allowableValues = {
@@ -71,12 +78,16 @@ public class LeadController {
                         "converted",
                         "lost",
                         "expired"
-                      }))
+                      }),
+              example = "new")
           @RequestParam(name = "status", required = false)
           String status,
-      @Parameter(description = "Max items to return (default 50, max 200)")
+      @Parameter(
+              description = "Max items to return. Defaults to 50, hard cap at 200.",
+              schema = @Schema(type = "integer", minimum = "1", maximum = "200"),
+              example = "50")
           @RequestParam(name = "limit", required = false)
-          String limit) {
+          Integer limit) {
 
     String validDealer = "";
     if (dealerId != null && !dealerId.isEmpty()) {

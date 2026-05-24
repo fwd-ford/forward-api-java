@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/customers")
+@RequestMapping(value = "/api/v1/customers", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Customers", description = "Customer profile lookup with RBAC.")
 public class CustomerController {
 
@@ -31,6 +32,7 @@ public class CustomerController {
 
   @GetMapping("/{id}")
   @Operation(
+      operationId = "getCustomer",
       summary = "Get customer by id",
       description =
           "Returns the customer profile for the given UUID. RBAC: end users can only read their own"
@@ -55,10 +57,20 @@ public class CustomerController {
     @ApiResponse(
         responseCode = "404",
         description = "Customer not found",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public Customer get(
-      @Parameter(description = "Customer UUID", required = true) @PathVariable String id,
+      @Parameter(
+              description = "Customer UUID.",
+              required = true,
+              schema = @Schema(format = "uuid"),
+              example = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10")
+          @PathVariable
+          String id,
       HttpServletRequest req) {
     String validId = Validations.validateUuid("id", id);
     AuthPrincipal p = (AuthPrincipal) req.getAttribute(WebAttrs.PRINCIPAL);

@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/scores")
+@RequestMapping(value = "/api/v1/scores", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Scores", description = "Customer churn score lookup.")
 public class ScoreController {
 
@@ -31,6 +32,7 @@ public class ScoreController {
 
   @GetMapping("/{customerId}")
   @Operation(
+      operationId = "getCurrentChurnScore",
       summary = "Get current churn score for a customer",
       description =
           "Returns the most recent churn score computed for the given customer. "
@@ -55,10 +57,20 @@ public class ScoreController {
     @ApiResponse(
         responseCode = "404",
         description = "No score available for this customer",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public ChurnScore get(
-      @Parameter(description = "Customer UUID", required = true) @PathVariable String customerId,
+      @Parameter(
+              description = "Customer UUID.",
+              required = true,
+              schema = @Schema(format = "uuid"),
+              example = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10")
+          @PathVariable
+          String customerId,
       HttpServletRequest req) {
     String validId = Validations.validateUuid("customerId", customerId);
     AuthPrincipal p = (AuthPrincipal) req.getAttribute(WebAttrs.PRINCIPAL);

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/vehicles")
+@RequestMapping(value = "/api/v1/vehicles", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Vehicles", description = "Vehicle lookup by VIN.")
 public class VehicleController {
 
@@ -30,6 +31,7 @@ public class VehicleController {
 
   @GetMapping("/{vin}")
   @Operation(
+      operationId = "getVehicle",
       summary = "Get vehicle by VIN",
       description =
           "Returns vehicle data for the given 17-character VIN. "
@@ -50,10 +52,18 @@ public class VehicleController {
     @ApiResponse(
         responseCode = "404",
         description = "Vehicle not found",
+        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
   public Vehicle get(
-      @Parameter(description = "17-character Vehicle Identification Number", required = true)
+      @Parameter(
+              description = "17-character Vehicle Identification Number (ISO 3779, no I/O/Q).",
+              required = true,
+              schema = @Schema(pattern = "^[A-HJ-NPR-Z0-9]{17}$"),
+              example = "1HGCM82633A123456")
           @PathVariable
           String vin) {
     return service.get(Validations.validateVin(vin));
