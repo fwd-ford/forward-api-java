@@ -14,10 +14,14 @@ import com.fwdford.forwardapi.web.CreateServiceEventRequest;
 import com.fwdford.forwardapi.web.Validations;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ServiceEventService {
+
+  private static final Logger log = LoggerFactory.getLogger(ServiceEventService.class);
 
   static final Map<Integer, String> SERVICE_CODE_TO_ORDER_TYPE =
       Map.of(
@@ -40,24 +44,37 @@ public class ServiceEventService {
 
     String orderType = SERVICE_CODE_TO_ORDER_TYPE.get(req.serviceCode());
     if (orderType == null) {
-      throw ApiException.badRequest("serviceCode deve estar entre 1 e 5.");
+      throw new IllegalStateException(
+          "serviceCode fora do range 1..5 deveria ter sido barrado pelo Bean Validation: "
+              + req.serviceCode());
     }
 
     if (vehicleRepo.findByVin(vin).isEmpty()) {
+      log.warn("service_event_rejected reason=vin_not_found vin={}", vin);
       throw ApiException.notFound("vehicle");
     }
 
     UUID dealerId =
         repo.findDealerIdByCode(req.dealerCode())
-            .orElseThrow(() -> ApiException.notFound("dealer"));
+            .orElseThrow(
+                () -> {
+                  log.warn(
+                      "service_event_rejected reason=dealer_not_found dealer_code={}",
+                      req.dealerCode());
+                  return ApiException.notFound("dealer");
+                });
 
-    return repo.insert(
-        vin,
-        dealerId,
-        orderType,
-        req.serviceDate(),
-        req.km(),
-        req.maintenanceNumber(),
-        req.mainSource());
+    ServiceEvent created =
+        repo.insert(
+            vin,
+            dealerId,
+            orderType,
+            req.serviceDate(),
+            req.km(),
+            req.maintenanceNumber(),
+            req.mainSource());
+    log.info(
+        "service_event_created id={} vin={} dealer_id={}", created.id(), vin, dealerId);
+    return created;
   }
 }

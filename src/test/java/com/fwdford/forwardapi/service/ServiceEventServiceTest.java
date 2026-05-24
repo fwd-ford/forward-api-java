@@ -91,12 +91,25 @@ class ServiceEventServiceTest {
   }
 
   @Test
-  void invalid_service_code_yields_bad_request() {
+  void invalid_vin_yields_bad_request_and_does_not_touch_repos() {
     CreateServiceEventRequest req =
-        new CreateServiceEventRequest(VIN, DEALER_CODE, 99, 3, 50000, SERVICE_DATE, "dealer_app");
+        new CreateServiceEventRequest(
+            "SHORT", DEALER_CODE, 1, 3, 50000, SERVICE_DATE, "dealer_app");
     ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
 
     assertEquals("bad_request", ex.code());
+    verify(vehicleRepo, never()).findByVin(anyString());
+  }
+
+  @Test
+  void invalid_service_code_triggers_defense_in_depth_and_does_not_touch_repos() {
+    CreateServiceEventRequest req =
+        new CreateServiceEventRequest(VIN, DEALER_CODE, 99, 3, 50000, SERVICE_DATE, "dealer_app");
+
+    assertThrows(IllegalStateException.class, () -> service.create(req));
+
+    verify(vehicleRepo, never()).findByVin(anyString());
+    verify(repo, never()).findDealerIdByCode(anyString());
   }
 
   @Test
@@ -111,5 +124,7 @@ class ServiceEventServiceTest {
     ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
 
     assertEquals("not_found", ex.code());
+    verify(repo, never())
+        .insert(anyString(), any(), anyString(), any(), any(), anyInt(), anyString());
   }
 }
