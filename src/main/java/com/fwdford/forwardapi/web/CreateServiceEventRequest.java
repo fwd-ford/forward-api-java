@@ -1,5 +1,6 @@
 // Request body for POST /api/v1/service-events. Bean Validation rejects malformed payloads.
-// Corpo da requisicao para POST /api/v1/service-events: Bean Validation rejeita payloads malformados.
+// Corpo da requisicao para POST /api/v1/service-events: Bean Validation rejeita payloads
+// malformados.
 package com.fwdford.forwardapi.web;
 
 import jakarta.validation.constraints.Max;
@@ -22,7 +23,5 @@ public record CreateServiceEventRequest(
     @Min(value = 0, message = "km deve ser >= 0") Integer km,
     @NotNull(message = "serviceDate obrigatorio") OffsetDateTime serviceDate,
     @NotBlank(message = "mainSource obrigatorio")
-        @Pattern(
-            regexp = "^(dealer_app|n8n|manual|legacy)$",
-            message = "mainSource invalido")
+        @Pattern(regexp = "^(dealer_app|n8n|manual|legacy)$", message = "mainSource invalido")
         String mainSource) {}

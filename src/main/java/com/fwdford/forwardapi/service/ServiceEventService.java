@@ -73,8 +73,7 @@ public class ServiceEventService {
             req.km(),
             req.maintenanceNumber(),
             req.mainSource());
-    log.info(
-        "service_event_created id={} vin={} dealer_id={}", created.id(), vin, dealerId);
+    log.info("service_event_created id={} vin={} dealer_id={}", created.id(), vin, dealerId);
     return created;
   }
 }

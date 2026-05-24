@@ -99,6 +99,7 @@ class ServiceEventServiceTest {
 
     assertEquals("bad_request", ex.code());
     verify(vehicleRepo, never()).findByVin(anyString());
+    verify(repo, never()).findDealerIdByCode(anyString());
   }
 
   @Test
