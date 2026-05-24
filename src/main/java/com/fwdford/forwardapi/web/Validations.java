@@ -53,6 +53,18 @@ public final class Validations {
     return Math.min(n, max);
   }
 
+  // Integer overload used when Spring auto-parses the query param.
+  // Sobrecarga usada quando o Spring ja converte o parametro para Integer.
+  public static int validateLimit(Integer raw, int defaultValue, int max) {
+    if (raw == null) {
+      return defaultValue;
+    }
+    if (raw < 1) {
+      throw ApiException.badRequest("Parametro limit deve ser inteiro positivo.");
+    }
+    return Math.min(raw, max);
+  }
+
   // validateEnum ensures the value is in the whitelist when not empty.
   // validateEnum: valida que o valor esta na whitelist quando nao vazio.
   public static String validateEnum(String name, String value, List<String> allowed) {

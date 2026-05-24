@@ -50,7 +50,7 @@ class ValidationsTest {
   @Test
   void validateLimit_returns_default_when_blank() {
     assertEquals(50, Validations.validateLimit("", 50, 200));
-    assertEquals(50, Validations.validateLimit(null, 50, 200));
+    assertEquals(50, Validations.validateLimit((String) null, 50, 200));
   }
 
   @Test
@@ -67,6 +67,22 @@ class ValidationsTest {
   @Test
   void validateLimit_rejects_non_integer() {
     assertThrows(ApiException.class, () -> Validations.validateLimit("abc", 50, 200));
+  }
+
+  @Test
+  void validateLimit_integer_returns_default_when_null() {
+    assertEquals(50, Validations.validateLimit((Integer) null, 50, 200));
+  }
+
+  @Test
+  void validateLimit_integer_clamps_to_max() {
+    assertEquals(200, Validations.validateLimit(Integer.valueOf(5000), 50, 200));
+  }
+
+  @Test
+  void validateLimit_integer_rejects_zero_or_negative() {
+    assertThrows(ApiException.class, () -> Validations.validateLimit(Integer.valueOf(0), 50, 200));
+    assertThrows(ApiException.class, () -> Validations.validateLimit(Integer.valueOf(-3), 50, 200));
   }
 
   @Test
