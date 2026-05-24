@@ -6,15 +6,22 @@ import com.fwdford.forwardapi.config.AppProperties;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 public class CorsConfig {
 
+  // Exposed as CorsConfigurationSource (not CorsFilter) so Spring Security
+  // can mount its own CORS filter ahead of the auth chain. A plain CorsFilter
+  // bean ran AFTER our AuthFilter, which let 401 responses ship without
+  // Access-Control-Allow-Origin and broke every browser request.
+  // Expoe Source pro Spring Security mover o CORS antes da auth.
   @Bean
-  public CorsFilter corsFilter(AppProperties props) {
+  @Primary
+  public CorsConfigurationSource corsConfigurationSource(AppProperties props) {
     CorsConfiguration cfg = new CorsConfiguration();
     cfg.setAllowedOrigins(props.allowedOrigins());
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
@@ -24,6 +31,6 @@ public class CorsConfig {
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", cfg);
-    return new CorsFilter(source);
+    return source;
   }
 }

@@ -11,14 +11,21 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
 
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, AuthFilter authFilter)
+  public SecurityFilterChain filterChain(
+      HttpSecurity http, AuthFilter authFilter, CorsConfigurationSource corsSource)
       throws Exception {
-    http.csrf(csrf -> csrf.disable())
+    // .cors() mounts Spring Security's own CORS filter BEFORE the auth chain.
+    // Without this, AuthFilter's 401 shipped without Access-Control-Allow-Origin
+    // and the browser blocked the response as a CORS error.
+    // Spring Security CORS antes da auth pra 401 ainda carregar os headers.
+    http.cors(c -> c.configurationSource(corsSource))
+        .csrf(csrf -> csrf.disable())
         .formLogin(f -> f.disable())
         .httpBasic(b -> b.disable())
         // Wire the CorsFilter bean into the security chain so it runs BEFORE auth.
