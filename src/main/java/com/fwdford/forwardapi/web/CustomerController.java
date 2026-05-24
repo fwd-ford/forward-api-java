@@ -35,8 +35,10 @@ public class CustomerController {
       operationId = "getCustomer",
       summary = "Get customer by id",
       description =
-          "Returns the customer profile for the given UUID. RBAC: end users can only read their own"
-              + " record; analyst, admin and dealer roles can read anyone.")
+          "Returns the customer profile for the given UUID. Authentication is required; in"
+              + " Sprint 1 any authenticated caller may read any customer (the mobile app needs"
+              + " this for the Lead Detail flow — see fwd-ford/forward-api-java#23). Sprint 2"
+              + " will tighten access to dealer-scoped reads via the leads table.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",

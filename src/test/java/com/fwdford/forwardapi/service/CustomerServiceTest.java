@@ -30,6 +30,10 @@ class CustomerServiceTest {
     when(repo.findById(anyString())).thenReturn(Optional.of(c));
   }
 
+  // Sprint 1 relaxed RBAC: any authenticated caller (any role) may read any customer.
+  // The tests below pin the behavior so the mobile Lead Detail flow keeps working.
+  // RBAC Sprint 1 relaxado: qualquer caller autenticado le qualquer customer.
+
   @Test
   void admin_can_read_any_customer() {
     Customer c = service.get(TARGET_ID, "some-admin-sub", "admin");
@@ -47,20 +51,35 @@ class CustomerServiceTest {
   }
 
   @Test
-  void user_can_only_read_itself() {
+  void end_user_can_read_itself() {
     assertDoesNotThrow(() -> service.get(TARGET_ID, TARGET_ID, "user"));
   }
 
   @Test
-  void user_cannot_read_another_customer() {
-    ApiException ex =
-        assertThrows(ApiException.class, () -> service.get(TARGET_ID, OTHER_ID, "user"));
+  void end_user_can_read_other_customer_under_sprint1_relaxed_rbac() {
+    assertDoesNotThrow(() -> service.get(TARGET_ID, OTHER_ID, "user"));
+  }
+
+  @Test
+  void any_authenticated_role_is_allowed() {
+    assertDoesNotThrow(() -> service.get(TARGET_ID, "mobile-app-sub", "mobile_app"));
+  }
+
+  @Test
+  void caller_without_role_claim_is_allowed_if_sub_is_present() {
+    assertDoesNotThrow(() -> service.get(TARGET_ID, "service-account", null));
+  }
+
+  @Test
+  void null_sub_is_forbidden() {
+    ApiException ex = assertThrows(ApiException.class, () -> service.get(TARGET_ID, null, "admin"));
     assertEquals("forbidden", ex.code());
   }
 
   @Test
-  void unknown_role_is_forbidden() {
-    assertThrows(ApiException.class, () -> service.get(TARGET_ID, TARGET_ID, "hacker"));
+  void blank_sub_is_forbidden() {
+    ApiException ex = assertThrows(ApiException.class, () -> service.get(TARGET_ID, "  ", "admin"));
+    assertEquals("forbidden", ex.code());
   }
 
   @Test

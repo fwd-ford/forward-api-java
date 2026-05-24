@@ -70,6 +70,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "201":
+          description: Service event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEvent"
         "403":
           description: Forbidden by RBAC
           content:
@@ -88,12 +94,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "201":
-          description: Service event created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceEvent"
         "400":
           description: Validation failed on the request body
           content:
@@ -150,14 +150,20 @@ paths:
           type: string
         example: 1HGCM82633A123456
       responses:
-        "404":
-          description: Vehicle not found
+        "200":
+          description: Vehicle found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "401":
+          description: Missing or invalid token
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "401":
-          description: Missing or invalid token
+        "404":
+          description: Vehicle not found
           content:
             application/json:
               schema:
@@ -174,12 +180,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "200":
-          description: Vehicle found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Vehicle"
   /api/v1/scores/{customerId}:
     get:
       tags:
@@ -198,14 +198,14 @@ paths:
           format: uuid
         example: 2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10
       responses:
-        "400":
-          description: Invalid customer UUID
+        "401":
+          description: Missing or invalid token
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "401":
-          description: Missing or invalid token
+        "400":
+          description: Invalid customer UUID
           content:
             application/json:
               schema:
@@ -296,6 +296,12 @@ paths:
           type: integer
         example: 50
       responses:
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "200":
           description: List of leads (may be empty)
           content:
@@ -304,12 +310,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Lead"
-        "401":
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetail"
         "400":
           description: "Invalid query parameter (dealer_id, status or limit)"
           content:
@@ -327,9 +327,10 @@ paths:
       tags:
       - Customers
       summary: Get customer by id
-      description: "Returns the customer profile for the given UUID. RBAC: end users\
-        \ can only read their own record; analyst, admin and dealer roles can read\
-        \ anyone."
+      description: Returns the customer profile for the given UUID. Authentication
+        is required; in Sprint 1 any authenticated caller may read any customer (the
+        mobile app needs this for the Lead Detail flow — see fwd-ford/forward-api-java#23).
+        Sprint 2 will tighten access to dealer-scoped reads via the leads table.
       operationId: getCustomer
       parameters:
       - name: id
@@ -347,26 +348,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "200":
-          description: Customer found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Customer"
         "404":
           description: Customer not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "400":
-          description: Invalid UUID
+        "200":
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "403":
+          description: Forbidden by RBAC
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "403":
-          description: Forbidden by RBAC
+        "400":
+          description: Invalid UUID
           content:
             application/json:
               schema:

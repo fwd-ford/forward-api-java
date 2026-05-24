@@ -1,6 +1,10 @@
-// Customer service. Applies RBAC: end users can only read their own record;
-// analyst, admin and dealer roles can read anyone.
-// Service de customer: aplica RBAC (user so ve a si mesmo; analyst/admin/dealer veem qualquer).
+// Customer service. Sprint 1 relaxes RBAC: any authenticated caller can read
+// any customer record. The mobile app needs broad read access for the Lead
+// Detail flow (customer name, phone for tel: action). Sprint 2 will tighten
+// to dealer-scoped access via the leads table.
+// Service de customer: no Sprint 1 qualquer caller autenticado le qualquer
+// customer (necessario pro app mobile na tela Lead Detail). Sprint 2
+// restringe por dealer via tabela de leads.
 package com.fwdford.forwardapi.service;
 
 import com.fwdford.forwardapi.error.ApiException;
@@ -18,16 +22,9 @@ public class CustomerService {
   }
 
   public Customer get(String id, String callerSub, String callerRole) {
-    if (!canRead(id, callerSub, callerRole)) {
+    if (callerSub == null || callerSub.isBlank()) {
       throw ApiException.forbidden();
     }
     return repo.findById(id).orElseThrow(() -> ApiException.notFound("customer"));
-  }
-
-  private boolean canRead(String id, String sub, String role) {
-    if ("analyst".equals(role) || "admin".equals(role) || "dealer".equals(role)) {
-      return true;
-    }
-    return "user".equals(role) && id.equals(sub);
   }
 }
