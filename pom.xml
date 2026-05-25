@@ -26,7 +26,7 @@
         <postgresql.version>42.7.11</postgresql.version>
         <tomcat.version>10.1.55</tomcat.version>
         <spotless.version>2.43.0</spotless.version>
-        <checkstyle.plugin.version>3.4.0</checkstyle.plugin.version>
+        <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
         <checkstyle.version>10.17.0</checkstyle.version>
         <spotbugs.plugin.version>4.8.6.4</spotbugs.plugin.version>
         <springdoc.version>2.7.0</springdoc.version>
