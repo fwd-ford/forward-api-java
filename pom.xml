@@ -29,7 +29,7 @@
         <checkstyle.plugin.version>3.4.0</checkstyle.plugin.version>
         <checkstyle.version>10.17.0</checkstyle.version>
         <spotbugs.plugin.version>4.8.6.4</spotbugs.plugin.version>
-        <springdoc.version>2.7.0</springdoc.version>
+        <springdoc.version>3.0.3</springdoc.version>
     </properties>
 
     <dependencies>
