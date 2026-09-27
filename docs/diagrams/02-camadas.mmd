@@ -1,0 +1,12 @@
+flowchart TB
+  REQ(["Requisição HTTP"]) --> FIL["Filtros servlet<br/>RequestId, SecurityHeaders, RateLimit"]
+  FIL --> SEC["Spring Security<br/>CORS, JwtAuthenticationFilter, AuthorizationFilter"]
+  SEC --> CTRL["web<br/>Controllers REST: validação de entrada,<br/>DTOs snake_case, status HTTP, Location"]
+  SEC --> SOAP["soap<br/>VehicleEndpoint (Spring WS, contrato XSD)"]
+  CTRL --> SVC["service<br/>regras de negócio, @PreAuthorize,<br/>escopo por concessionária,<br/>máquina de estados, auditoria"]
+  SOAP --> SVC
+  SVC --> REPO["repository<br/>SQL parametrizado<br/>NamedParameterJdbcTemplate"]
+  REPO --> DB[("PostgreSQL<br/>Flyway V1..V16 + bootstrap")]
+  CTRL -. exceções .-> ERR["error<br/>GlobalExceptionHandler<br/>RFC 7807 problem+json"]
+  SEC -. "401 e 403" .-> EP["ProblemAuthenticationEntryPoint<br/>ProblemAccessDeniedHandler"]
+  CFG["config<br/>AppProperties, OpenAPI,<br/>EmbeddedPostgres (demo/test)"] -.- SVC

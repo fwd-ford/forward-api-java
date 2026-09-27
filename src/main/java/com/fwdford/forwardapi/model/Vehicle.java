@@ -22,6 +22,13 @@ public record Vehicle(
             example = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10",
             format = "uuid")
         String customerId,
+    @JsonProperty("current_dealer_id")
+        @Schema(
+            description = "Dealer currently responsible for the vehicle (nullable).",
+            example = "d0000000-0000-4000-8000-000000000001",
+            format = "uuid",
+            nullable = true)
+        String currentDealerId,
     @Schema(description = "Commercial model name.", example = "Ranger") String model,
     @Schema(description = "Model year.", example = "2024", minimum = "1900") int year,
     @Schema(description = "Trim or version of the model.", example = "Limited 3.0 V6")

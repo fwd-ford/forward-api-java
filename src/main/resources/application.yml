@@ -1,8 +1,24 @@
 # Runtime configuration. Every value can be overridden via environment variables.
 # Configuracao de runtime. Todos os valores podem ser sobrescritos por variaveis de ambiente.
+#
+# Profiles:
+#   (default)  PostgreSQL from DATABASE_URL, Flyway applies db/migration only.
+#   prod       Render + Supabase: baseline at 13 on the forward-infra schema, V14+ and the
+#              idempotent db/bootstrap data (demo users, leads). See application-prod.yml.
+#   demo       Embedded PostgreSQL 16 (no Docker) + migrations + bootstrap + demo seed.
+#   test       Used by the automated tests (embedded PostgreSQL, fixed JWT secret).
 server:
   port: ${PORT:8080}
   shutdown: graceful
+  # "native" behind a reverse proxy (Render): Tomcat's RemoteIpValve then takes the client IP
+  # and scheme from X-Forwarded-* sent by trusted internal proxies only.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
+  error:
+    whitelabel:
+      enabled: false
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
   tomcat:
     max-http-form-post-size: 1MB
     max-swallow-size: 1MB
@@ -13,15 +29,24 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 10s
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/forward?sslmode=disable}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:55432/forward?sslmode=disable}
     username: ${DATABASE_USER:forward}
     password: ${DATABASE_PASSWORD:forward_dev}
     hikari:
-      maximum-pool-size: 20
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
       minimum-idle: 2
       max-lifetime: 1800000
       idle-timeout: 300000
       connection-test-query: SELECT 1
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+  jackson:
+    # Every JSON payload (requests and responses) uses snake_case.
+    property-naming-strategy: SNAKE_CASE
+    deserialization:
+      fail-on-unknown-properties: false
 
 management:
   endpoints:
@@ -37,16 +62,42 @@ logging:
   level:
     root: ${LOG_LEVEL:INFO}
     org.springframework.security: WARN
+    io.zonky.test.db.postgres: WARN
+
+springdoc:
+  # Keep ApiProblem/FieldProblem: they are referenced only from components.responses.
+  remove-broken-reference-definitions: false
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    persist-authorization: true
 
 forward:
   env: ${ENV:development}
-  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  version: "@project.version@"
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081}
   rate-limit:
     max: ${RATE_LIMIT_MAX:60}
     window: ${RATE_LIMIT_WINDOW:1m}
+    login-max: ${LOGIN_RATE_LIMIT_MAX:5}
+    login-window: ${LOGIN_RATE_LIMIT_WINDOW:1m}
   jwt:
-    secret: ${SUPABASE_JWT_SECRET:}
-    jwks-url: ${SUPABASE_JWKS_URL:}
-    issuer: ${SUPABASE_JWT_ISSUER:}
+    # HS256 signing key, at least 32 bytes. Mandatory when ENV=production.
+    secret: ${JWT_SECRET:}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+    issuer: forward-api
+    audience: forward-app
+    clock-skew-seconds: 30
+    # How long the user's state (active, role, dealer, token_version) checked on every request
+    # is cached. Revocation is immediate on this instance; 0 disables the cache.
+    user-state-cache-ttl: ${JWT_USER_STATE_CACHE_TTL:30s}
   internal-api-key: ${INTERNAL_API_KEY:}
   max-body-bytes: ${MAX_BODY_BYTES:1048576}
+  # Log format consumed by logback-spring.xml: JSON or CONSOLE.
+  # LOG_FORMAT wins; otherwise ENV=production switches to JSON.
+  log-format: ${LOG_FORMAT:${forward.log-format-by-env.${ENV:development}:CONSOLE}}
+  log-format-by-env:
+    production: JSON

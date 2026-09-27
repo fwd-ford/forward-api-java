@@ -1,92 +1,128 @@
 package com.fwdford.forwardapi.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.Customer;
 import com.fwdford.forwardapi.repository.CustomerRepository;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
+import com.fwdford.forwardapi.security.Role;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/** Dealer scoping rules for customer reads (unit level, repository mocked). */
 class CustomerServiceTest {
+
+  private static final String CUSTOMER_ID = "11111111-1111-1111-1111-111111111001";
+  private static final String DEALER_1 = "d0000000-0000-4000-8000-000000000001";
+  private static final String DEALER_2 = "d0000000-0000-4000-8000-000000000002";
 
   private CustomerRepository repo;
   private CustomerService service;
-
-  private static final String TARGET_ID = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10";
-  private static final String OTHER_ID = "9f1d7b6a-1234-4f55-89ab-abcdef012345";
 
   @BeforeEach
   void setup() {
     repo = Mockito.mock(CustomerRepository.class);
     service = new CustomerService(repo);
     Customer c =
-        new Customer(TARGET_ID, "Jota", null, null, null, null, false, OffsetDateTime.now());
+        new Customer(
+            CUSTOMER_ID, "João da Silva", null, null, null, null, false, OffsetDateTime.now());
     when(repo.findById(anyString())).thenReturn(Optional.of(c));
   }
 
-  // Sprint 1 relaxed RBAC: any authenticated caller (any role) may read any customer.
-  // The tests below pin the behavior so the mobile Lead Detail flow keeps working.
-  // RBAC Sprint 1 relaxado: qualquer caller autenticado le qualquer customer.
-
-  @Test
-  void admin_can_read_any_customer() {
-    Customer c = service.get(TARGET_ID, "some-admin-sub", "admin");
-    assertEquals(TARGET_ID, c.id());
+  private static AuthenticatedUser user(Role role, String dealerId) {
+    return new AuthenticatedUser(
+        "ad000000-0000-4000-8000-000000000099", "u@forward.dev", "U", role, dealerId);
   }
 
   @Test
-  void analyst_can_read_any_customer() {
-    assertDoesNotThrow(() -> service.get(TARGET_ID, "an-analyst", "analyst"));
+  void admin_reads_any_customer_without_scope_check() {
+    Customer c = service.get(CUSTOMER_ID, user(Role.ADMIN, null));
+    assertEquals(CUSTOMER_ID, c.id());
+    verify(repo, never()).isLinkedToDealer(anyString(), anyString());
   }
 
   @Test
-  void dealer_can_read_any_customer() {
-    assertDoesNotThrow(() -> service.get(TARGET_ID, "a-dealer", "dealer"));
+  void service_principal_reads_any_customer() {
+    assertDoesNotThrow(() -> service.get(CUSTOMER_ID, AuthenticatedUser.service()));
   }
 
   @Test
-  void end_user_can_read_itself() {
-    assertDoesNotThrow(() -> service.get(TARGET_ID, TARGET_ID, "user"));
+  void atendente_reads_customer_linked_to_own_dealer() {
+    when(repo.isLinkedToDealer(CUSTOMER_ID, DEALER_1)).thenReturn(true);
+    assertDoesNotThrow(() -> service.get(CUSTOMER_ID, user(Role.ATENDENTE, DEALER_1)));
   }
 
   @Test
-  void end_user_can_read_other_customer_under_sprint1_relaxed_rbac() {
-    assertDoesNotThrow(() -> service.get(TARGET_ID, OTHER_ID, "user"));
+  void gestor_reads_customer_linked_to_own_dealer() {
+    when(repo.isLinkedToDealer(CUSTOMER_ID, DEALER_1)).thenReturn(true);
+    assertDoesNotThrow(() -> service.get(CUSTOMER_ID, user(Role.GESTOR, DEALER_1)));
   }
 
   @Test
-  void any_authenticated_role_is_allowed() {
-    assertDoesNotThrow(() -> service.get(TARGET_ID, "mobile-app-sub", "mobile_app"));
+  void atendente_from_other_dealer_is_forbidden() {
+    when(repo.isLinkedToDealer(CUSTOMER_ID, DEALER_2)).thenReturn(false);
+    ApiException ex =
+        assertThrows(
+            ApiException.class, () -> service.get(CUSTOMER_ID, user(Role.ATENDENTE, DEALER_2)));
+    assertEquals("ACCESS_OTHER_DEALER", ex.code());
+    assertEquals(403, ex.status().value());
   }
 
   @Test
-  void caller_without_role_claim_is_allowed_if_sub_is_present() {
-    assertDoesNotThrow(() -> service.get(TARGET_ID, "service-account", null));
+  void gestor_from_other_dealer_is_forbidden() {
+    when(repo.isLinkedToDealer(CUSTOMER_ID, DEALER_2)).thenReturn(false);
+    ApiException ex =
+        assertThrows(
+            ApiException.class, () -> service.get(CUSTOMER_ID, user(Role.GESTOR, DEALER_2)));
+    assertEquals("ACCESS_OTHER_DEALER", ex.code());
   }
 
   @Test
-  void null_sub_is_forbidden() {
-    ApiException ex = assertThrows(ApiException.class, () -> service.get(TARGET_ID, null, "admin"));
-    assertEquals("forbidden", ex.code());
+  void dealer_scoped_user_without_dealer_is_forbidden() {
+    ApiException ex =
+        assertThrows(
+            ApiException.class, () -> service.get(CUSTOMER_ID, user(Role.ATENDENTE, null)));
+    assertEquals("ACCESS_OTHER_DEALER", ex.code());
   }
 
   @Test
-  void blank_sub_is_forbidden() {
-    ApiException ex = assertThrows(ApiException.class, () -> service.get(TARGET_ID, "  ", "admin"));
-    assertEquals("forbidden", ex.code());
-  }
-
-  @Test
-  void missing_customer_yields_not_found() {
+  void missing_customer_yields_not_found_before_scope_check() {
     when(repo.findById(anyString())).thenReturn(Optional.empty());
     ApiException ex =
-        assertThrows(ApiException.class, () -> service.get(TARGET_ID, TARGET_ID, "admin"));
-    assertEquals("not_found", ex.code());
+        assertThrows(
+            ApiException.class, () -> service.get(CUSTOMER_ID, user(Role.ATENDENTE, DEALER_1)));
+    assertEquals("CUSTOMER_NOT_FOUND", ex.code());
+    assertEquals(404, ex.status().value());
+    verify(repo, never()).isLinkedToDealer(anyString(), anyString());
+  }
+
+  @Test
+  void role_permissions_match_matrix() {
+    assertTrue(Role.ADMIN.permissions().contains("users:manage"));
+    assertFalse(Role.GESTOR.permissions().contains("users:manage"));
+    assertTrue(Role.GESTOR.permissions().contains("service-events:write"));
+    assertFalse(Role.ATENDENTE.permissions().contains("service-events:write"));
+    assertTrue(Role.ATENDENTE.dealerScoped());
+    assertFalse(Role.ADMIN.dealerScoped());
+  }
+
+  @Test
+  void parse_user_role_rejects_service_and_unknown() {
+    assertEquals(Optional.of(Role.GESTOR), Role.parseUserRole("gestor"));
+    assertEquals(Optional.empty(), Role.parseUserRole("SERVICE"));
+    assertEquals(Optional.empty(), Role.parseUserRole("root"));
+    assertEquals(Optional.empty(), Role.parseUserRole(null));
   }
 }

@@ -1,0 +1,263 @@
+Evidência de execução dos testes automatizados - forward-api-java (Sprint 3)
+==============================================================================
+
+Comando:   ./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality
+Commit:    feat/sprint3-soa-jwt-rbac @ b333df0
+Ambiente:  Windows 11, Java 17.0.18 (Temurin), Maven 3.9.6 (wrapper),
+           PostgreSQL 16.15 embarcado (Zonky) com migrations Flyway V1..V15 e seed
+Relatórios: target/surefire-reports (XML/TXT), target/reports/surefire.html,
+            target/site/jacoco/index.html (cópias em docs/evidencias)
+
+Resultado: 217 testes, 0 falhas, 0 erros, 0 ignorados (119 unitários + 98 de integração HTTP)
+
+Classe                       Tipo              Testes Falhas  Erros Ignor.  Tempo(s)
+------------------------------------------------------------------------------------
+ApiExceptionTest             unitário               9      0      0      0      0.20
+AuthIT                       integração HTTP       12      0      0      0     14.28
+ErrorHandlingIT              integração HTTP        9      0      0      0      0.14
+HttpServerIT                 integração HTTP        7      0      0      0      5.73
+LeadIT                       integração HTTP       16      0      0      0      0.37
+ProdMigrationIT              integração HTTP        2      0      0      0      6.45
+SecurityIT                   integração HTTP       23      0      0      0      1.08
+ServiceEventIT               integração HTTP       10      0      0      0      0.22
+TokenRevocationIT            integração HTTP        8      0      0      0      1.02
+UserIT                       integração HTTP       11      0      0      0      0.33
+HmacValidatorTest            unitário              14      0      0      0      0.02
+JwtAuthenticationFilterTest  unitário              16      0      0      0      0.03
+JwtServiceTest               unitário              20      0      0      0      0.04
+UserStateCacheTest           unitário               8      0      0      0      0.02
+CustomerServiceTest          unitário              10      0      0      0      0.50
+ScoreServiceTest             unitário               6      0      0      0      0.10
+ServiceEventServiceTest      unitário              10      0      0      0      0.42
+LogSanitizerTest             unitário               5      0      0      0      0.01
+SecureXmlTest                unitário               4      0      0      0      0.03
+ValidationsTest              unitário              17      0      0      0      0.03
+------------------------------------------------------------------------------------
+TOTAL                                             217      0      0      0
+
+Linhas finais do log do Maven:
+  [INFO] Tests run: 217, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] You have 0 Checkstyle violations.
+  [INFO] BugInstance size is 0
+  [INFO] BUILD SUCCESS
+  [INFO] Total time:  59.374 s
+  [INFO] Finished at: 2026-09-27T05:11:06-03:00
+
+Testes executados (método e cenário):
+  [OK  ] ApiExceptionTest.conflict_and_unprocessable_use_409_and_422
+  [OK  ] ApiExceptionTest.invalidCredentials_uses_401_and_generic_message
+  [OK  ] ApiExceptionTest.forbidden_uses_403
+  [OK  ] ApiExceptionTest.internal_uses_500
+  [OK  ] ApiExceptionTest.notFound_uses_404_and_keeps_code_and_detail
+  [OK  ] ApiExceptionTest.forbiddenOtherDealer_uses_403_and_specific_code
+  [OK  ] ApiExceptionTest.tooManyRequests_uses_429
+  [OK  ] ApiExceptionTest.unauthorized_uses_401
+  [OK  ] ApiExceptionTest.badRequest_uses_400_and_code
+  [OK  ] AuthIT.login_is_rate_limited_per_ip  (limite de 5 tentativas de login por minuto por IP: 6a tentativa recebe 429)
+  [OK  ] AuthIT.login_success_returns_token_that_works_on_me  (login válido devolve JWT Bearer e dados do usuário; o token funciona em /me)
+  [OK  ] AuthIT.inactive_user_is_401_disabled  (usuário inativo com senha correta: 401 AUTH_USER_DISABLED)
+  [OK  ] AuthIT.malformed_json_is_400  (JSON malformado no login: 400 MALFORMED_JSON)
+  [OK  ] AuthIT.me_with_internal_api_key  (GET /me com X-API-Key interna: perfil SERVICE)
+  [OK  ] AuthIT.missing_fields_is_400  (corpo sem campos: 400 VALIDATION_FAILED com erros por campo)
+  [OK  ] AuthIT.me_for_admin  (GET /me do ADMIN: sem concessionária e com permissão users:manage)
+  [OK  ] AuthIT.invalid_email_format_is_400  (e-mail em formato inválido: 400)
+  [OK  ] AuthIT.login_attempts_are_audited  (login bem-sucedido e falho são gravados no audit_log)
+  [OK  ] AuthIT.unknown_email_gets_same_401_as_wrong_password  (e-mail inexistente: mesma resposta 401 da senha errada (não revela contas))
+  [OK  ] AuthIT.login_email_is_case_insensitive  (e-mail é comparado sem diferenciar maiúsculas)
+  [OK  ] AuthIT.wrong_password_is_401  (senha errada: 401 AUTH_INVALID_CREDENTIALS)
+  [OK  ] ErrorHandlingIT.messages_are_portuguese_with_accents  (mensagens de erro em pt-BR com acentuação)
+  [OK  ] ErrorHandlingIT.wrong_json_field_type_is_400  (tipo incompatível em campo do JSON: 400 INVALID_FIELD_VALUE)
+  [OK  ] ErrorHandlingIT.malformed_json_is_400  (JSON malformado: 400 MALFORMED_JSON)
+  [OK  ] ErrorHandlingIT.unknown_path_is_404  (rota inexistente (autenticado): 404 NOT_FOUND em problem+json)
+  [OK  ] ErrorHandlingIT.unsupported_media_type_is_415  (Content-Type não suportado: 415 UNSUPPORTED_MEDIA_TYPE)
+  [OK  ] ErrorHandlingIT.query_type_mismatch_is_400  (tipo incompatível em query string: 400 TYPE_MISMATCH)
+  [OK  ] ErrorHandlingIT.request_id_is_propagated  (X-Request-Id enviado pelo cliente é devolvido no header e no corpo do erro)
+  [OK  ] ErrorHandlingIT.method_not_allowed_is_405  (método não suportado: 405 METHOD_NOT_ALLOWED com header Allow)
+  [OK  ] ErrorHandlingIT.unsafe_request_id_is_replaced  (X-Request-Id com caracteres inválidos é substituído (evita log injection))
+  [OK  ] HttpServerIT.soap_with_token_returns_vehicle  (SOAP GetVehicle com token: 200 com os dados do veículo)
+  [OK  ] HttpServerIT.public_endpoints_over_http  (health, OpenAPI e Swagger UI respondem sem token em HTTP real)
+  [OK  ] HttpServerIT.soap_requires_token  (SOAP GetVehicle sem token: 401)
+  [OK  ] HttpServerIT.soap_with_doctype_is_rejected  (SOAP com DOCTYPE (XXE) é recusado e a entidade não é expandida)
+  [OK  ] HttpServerIT.protected_endpoint_over_http  (rota protegida sem token em HTTP real: 401 problem+json)
+  [OK  ] HttpServerIT.soap_unknown_vin_is_fault  (SOAP GetVehicle com VIN inexistente: SOAP Fault (Client))
+  [OK  ] HttpServerIT.wsdl_is_public  (WSDL é público e descreve a operação GetVehicle)
+  [OK  ] LeadIT.patch_empty_body_is_400  (PATCH vazio: 400 EMPTY_PATCH)
+  [OK  ] LeadIT.patch_notes_only  (PATCH somente de notas mantém o status)
+  [OK  ] LeadIT.patch_unknown_status_is_400  (PATCH com status desconhecido: 400 VALIDATION_FAILED)
+  [OK  ] LeadIT.patch_valid_transition  (PATCH new -> contacted: 200, status atualizado e registro no audit_log)
+  [OK  ] LeadIT.admin_lists_everything_and_filters_by_dealer  (ADMIN lista todas as concessionárias e pode filtrar por dealer_id)
+  [OK  ] LeadIT.patch_from_terminal_status_is_409  (PATCH a partir de status final (converted -> lost): 409 LEAD_INVALID_TRANSITION)
+  [OK  ] LeadIT.patch_skipping_steps_is_409  (PATCH com transição não permitida (new -> converted): 409)
+  [OK  ] LeadIT.atendente_filtering_other_dealer_is_403  (ATENDENTE pedindo dealer_id de outra concessionária: 403)
+  [OK  ] LeadIT.patch_scope_and_not_found  (PATCH em lead de outra concessionária: 403; lead inexistente: 404)
+  [OK  ] LeadIT.atendente2_lists_dealer_2  (ATENDENTE de outra concessionária enxerga outro conjunto)
+  [OK  ] LeadIT.unknown_and_invalid_ids  (lead inexistente: 404; id inválido: 400)
+  [OK  ] LeadIT.atendente_lists_only_own_dealer  (ATENDENTE lista apenas leads da própria concessionária (array + X-Total-Count))
+  [OK  ] LeadIT.patch_to_converted_sets_converted_at  (PATCH contacted -> converted preenche converted_at (merge-patch+json aceito))
+  [OK  ] LeadIT.filters_and_pagination  (filtros de status e prioridade e paginação limit/offset)
+  [OK  ] LeadIT.get_lead_detail  (detalhe do lead traz dados de cliente, veículo e score)
+  [OK  ] LeadIT.invalid_filters_are_400  (filtro com status desconhecido ou offset negativo: 400)
+  [OK  ] ProdMigrationIT.upgrades_existing_forward_infra_schema
+  [OK  ] ProdMigrationIT.creates_everything_on_an_empty_database  (perfil prod em banco vazio: todas as migrations e o bootstrap)
+  [OK  ] SecurityIT.atendente_cannot_manage_users  (ATENDENTE em /api/v1/users: 403 ACCESS_DENIED)
+  [OK  ] SecurityIT.own_dealer_customer_and_score_are_readable  (cliente da própria concessionária e seu score: 200)
+  [OK  ] SecurityIT.no_token_is_401  (sem token: 401 AUTH_REQUIRED com WWW-Authenticate)
+  [OK  ] SecurityIT.gestor_cannot_create_users_even_with_invalid_body  (GESTOR em /api/v1/users: 403 (inclusive antes de validar o corpo))
+  [OK  ] SecurityIT.malformed_token_is_401  (token malformado: 401 AUTH_TOKEN_INVALID)
+  [OK  ] SecurityIT.wrong_audience_is_401  (audiência (aud) incorreta: 401)
+  [OK  ] SecurityIT.unknown_vehicle_is_404  (veículo inexistente: 404 VEHICLE_NOT_FOUND)
+  [OK  ] SecurityIT.atendente_cannot_create_service_event  (ATENDENTE não cria evento de serviço: 403)
+  [OK  ] SecurityIT.wrong_issuer_is_401  (emissor (iss) incorreto: 401)
+  [OK  ] SecurityIT.cross_dealer_customer_is_403_but_admin_reads_it  (cliente de outra concessionária: 403; ADMIN lê qualquer cliente)
+  [OK  ] SecurityIT.gestor_cannot_delete_service_event  (GESTOR não exclui evento de serviço: 403)
+  [OK  ] SecurityIT.invalid_api_key_is_401  (X-API-Key inválida: 401 AUTH_API_KEY_INVALID)
+  [OK  ] SecurityIT.expired_token_is_401  (token expirado: 401 AUTH_TOKEN_EXPIRED)
+  [OK  ] SecurityIT.cors_preflight_from_unknown_origin_is_rejected  (preflight CORS de origem não permitida é recusado)
+  [OK  ] SecurityIT.public_endpoints_without_token  (endpoints públicos acessíveis sem token (health, OpenAPI, Swagger UI))
+  [OK  ] SecurityIT.security_headers_on_401  (respostas de erro também carregam os headers de segurança)
+  [OK  ] SecurityIT.bad_signature_is_401  (assinatura inválida (outro segredo): 401)
+  [OK  ] SecurityIT.cors_preflight_from_allowed_origin  (preflight CORS de origem permitida responde sem exigir token)
+  [OK  ] SecurityIT.cross_dealer_lead_is_403  (lead de outra concessionária: 403 ACCESS_OTHER_DEALER)
+  [OK  ] SecurityIT.vehicle_scope  (veículo de outra concessionária: 403; próprio: 200)
+  [OK  ] SecurityIT.deprecated_score_alias_has_headers  (alias deprecado /api/v1/scores/{id} responde com headers Deprecation e Link)
+  [OK  ] SecurityIT.correctly_signed_custom_token_is_accepted  (token com segredo, iss e aud corretos é aceito)
+  [OK  ] SecurityIT.non_bearer_scheme_is_401  (esquema diferente de Bearer: 401 AUTH_TOKEN_INVALID)
+  [OK  ] ServiceEventIT.unknown_dealer_is_422  (POST com concessionária inexistente: 422 REFERENCED_DEALER_NOT_FOUND)
+  [OK  ] ServiceEventIT.service_api_key_can_create  (integração com X-API-Key (perfil SERVICE) registra evento)
+  [OK  ] ServiceEventIT.unknown_vehicle_is_422  (POST com VIN inexistente: 422 REFERENCED_VEHICLE_NOT_FOUND)
+  [OK  ] ServiceEventIT.legacy_camel_case_body_is_accepted  (corpo legado em camelCase (Sprint 2) continua aceito)
+  [OK  ] ServiceEventIT.list_is_scoped_and_filterable  (listagem com escopo por concessionária e filtro por VIN)
+  [OK  ] ServiceEventIT.full_crud_flow  (CRUD: POST 201 + Location -> GET 200 -> PUT 200 -> DELETE 204 -> GET 404)
+  [OK  ] ServiceEventIT.scope_and_not_found  (evento de outra concessionária: 403; PUT em id inexistente: 404)
+  [OK  ] ServiceEventIT.gestor_other_dealer_is_403  (GESTOR não registra evento para outra concessionária: 403)
+  [OK  ] ServiceEventIT.invalid_body_is_400  (POST com campos inválidos: 400 com erros por campo)
+  [OK  ] ServiceEventIT.duplicate_is_409  (POST duplicado (mesmo VIN, concessionária, tipo e data): 409)
+  [OK  ] TokenRevocationIT.dealer_move_revokes_existing_token  (usuário movido para outra concessionária: token antigo 401, novo token vê a nova)
+  [OK  ] TokenRevocationIT.demotion_revokes_existing_admin_token  (ADMIN rebaixado a GESTOR perde /users: token antigo 401, novo login 403)
+  [OK  ] TokenRevocationIT.same_state_security_edit_still_revokes  (PATCH active=true num usuário ativo força novo login (token_version incrementado))
+  [OK  ] TokenRevocationIT.password_reset_revokes_existing_token  (redefinição de senha pelo ADMIN revoga os tokens do usuário)
+  [OK  ] TokenRevocationIT.deactivation_revokes_existing_token  (usuário desativado: o token antigo deixa de valer na hora (401 AUTH_TOKEN_REVOKED))
+  [OK  ] TokenRevocationIT.deletion_revokes_existing_token  (usuário excluído: token antigo 401 AUTH_TOKEN_REVOKED)
+  [OK  ] TokenRevocationIT.service_api_key_is_unaffected  (chamadas com X-API-Key (perfil SERVICE) não dependem de app_users)
+  [OK  ] TokenRevocationIT.name_only_edit_keeps_token_valid  (alterar só o nome não revoga o token)
+  [OK  ] UserIT.deactivate_user_blocks_login  (PATCH desativa usuário; login passa a responder 401 AUTH_USER_DISABLED)
+  [OK  ] UserIT.self_modification_is_409  (ADMIN não altera o próprio perfil nem se desativa: 409)
+  [OK  ] UserIT.delete_user  (DELETE 204 e depois GET 404)
+  [OK  ] UserIT.self_delete_is_409  (ADMIN excluindo a si mesmo: 409 USER_SELF_DELETE)
+  [OK  ] UserIT.duplicate_email_is_409  (e-mail duplicado (sem diferenciar maiúsculas): 409 USER_EMAIL_TAKEN)
+  [OK  ] UserIT.admin_lists_users  (ADMIN lista usuários com X-Total-Count e sem hash de senha)
+  [OK  ] UserIT.dealer_rules  (ATENDENTE sem dealer_id: 400; concessionária inexistente: 422)
+  [OK  ] UserIT.create_user_then_login  (POST cria usuário (201 + Location), senha gravada como BCrypt e login funciona)
+  [OK  ] UserIT.unknown_user_is_404  (usuário inexistente: 404)
+  [OK  ] UserIT.weak_password_is_400  (senha fraca: 400 VALIDATION_FAILED no campo password)
+  [OK  ] UserIT.promote_to_admin_clears_dealer  (PATCH promove GESTOR a ADMIN e remove a concessionária)
+  [OK  ] HmacValidatorTest.verifyRejectsNonNumericTimestamp
+  [OK  ] HmacValidatorTest.verifyIsCaseInsensitiveOnSignatureHex
+  [OK  ] HmacValidatorTest.verifyRejectsMissingHeaders
+  [OK  ] HmacValidatorTest.verifyRejectsTamperedMethod
+  [OK  ] HmacValidatorTest.verifyAcceptsSignatureUpToMaxSkew
+  [OK  ] HmacValidatorTest.constructorRejectsNonPositiveSkew
+  [OK  ] HmacValidatorTest.verifyRejectsExpiredTimestamp
+  [OK  ] HmacValidatorTest.constructorRejectsBlankSecret
+  [OK  ] HmacValidatorTest.verifyRejectsTamperedBody
+  [OK  ] HmacValidatorTest.verifyRejectsTamperedPath
+  [OK  ] HmacValidatorTest.verifyAcceptsFreshValidSignature
+  [OK  ] HmacValidatorTest.verifyRejectsFutureTimestampBeyondSkew
+  [OK  ] HmacValidatorTest.signIsDeterministic
+  [OK  ] HmacValidatorTest.verifyRejectsBitFlippedSignature
+  [OK  ] JwtAuthenticationFilterTest.valid_bearer_token_of_a_current_user_yields_the_principal
+  [OK  ] JwtAuthenticationFilterTest.expired_token_reports_expired
+  [OK  ] JwtAuthenticationFilterTest.token_with_an_outdated_role_is_revoked
+  [OK  ] JwtAuthenticationFilterTest.no_credentials_is_anonymous_without_failure
+  [OK  ] JwtAuthenticationFilterTest.revocation_reasons
+  [OK  ] JwtAuthenticationFilterTest.token_with_an_outdated_dealer_is_revoked
+  [OK  ] JwtAuthenticationFilterTest.api_key_is_rejected_when_not_configured
+  [OK  ] JwtAuthenticationFilterTest.other_schemes_and_empty_tokens_are_invalid
+  [OK  ] JwtAuthenticationFilterTest.bearer_scheme_is_case_insensitive
+  [OK  ] JwtAuthenticationFilterTest.token_of_a_deleted_user_is_revoked
+  [OK  ] JwtAuthenticationFilterTest.matching_api_key_yields_the_service_principal_without_user_lookup
+  [OK  ] JwtAuthenticationFilterTest.token_of_a_deactivated_user_is_revoked
+  [OK  ] JwtAuthenticationFilterTest.token_issued_after_the_change_is_accepted
+  [OK  ] JwtAuthenticationFilterTest.token_with_an_outdated_version_is_revoked_even_if_role_and_dealer_match
+  [OK  ] JwtAuthenticationFilterTest.bearer_token_extraction
+  [OK  ] JwtAuthenticationFilterTest.wrong_api_key_is_rejected_even_with_a_valid_token
+  [OK  ] JwtServiceTest.missing_or_malformed_token_version_is_rejected
+  [OK  ] JwtServiceTest.unsigned_token_is_rejected
+  [OK  ] JwtServiceTest.wrong_issuer_is_rejected
+  [OK  ] JwtServiceTest.admin_token_has_no_dealer_claim
+  [OK  ] JwtServiceTest.missing_or_unknown_role_is_rejected
+  [OK  ] JwtServiceTest.correct_custom_token_is_accepted
+  [OK  ] JwtServiceTest.expired_token_is_rejected_with_expired_reason
+  [OK  ] JwtServiceTest.production_without_secret_fails_fast
+  [OK  ] JwtServiceTest.token_within_clock_skew_is_accepted
+  [OK  ] JwtServiceTest.tampered_payload_is_rejected
+  [OK  ] JwtServiceTest.wrong_audience_is_rejected
+  [OK  ] JwtServiceTest.token_carries_standard_and_custom_claims
+  [OK  ] JwtServiceTest.non_production_without_secret_uses_an_ephemeral_key
+  [OK  ] JwtServiceTest.issued_token_round_trips_to_the_same_principal
+  [OK  ] JwtServiceTest.each_token_gets_a_unique_jti
+  [OK  ] JwtServiceTest.short_secret_fails_fast_in_any_environment
+  [OK  ] JwtServiceTest.token_signed_with_another_secret_is_rejected
+  [OK  ] JwtServiceTest.token_version_round_trips
+  [OK  ] JwtServiceTest.garbage_and_empty_tokens_are_rejected
+  [OK  ] JwtServiceTest.invalid_expiration_configuration_fails_fast
+  [OK  ] UserStateCacheTest.serves_from_cache_within_ttl
+  [OK  ] UserStateCacheTest.deleted_user_is_cached_as_absent
+  [OK  ] UserStateCacheTest.reloads_after_ttl_expires
+  [OK  ] UserStateCacheTest.invalidate_forces_a_fresh_read
+  [OK  ] UserStateCacheTest.memory_guard_resets_the_cache_when_full
+  [OK  ] UserStateCacheTest.invalidate_after_commit_also_evicts_when_the_transaction_commits
+  [OK  ] UserStateCacheTest.negative_ttl_is_rejected
+  [OK  ] UserStateCacheTest.zero_ttl_always_reads_the_database
+  [OK  ] CustomerServiceTest.admin_reads_any_customer_without_scope_check
+  [OK  ] CustomerServiceTest.missing_customer_yields_not_found_before_scope_check
+  [OK  ] CustomerServiceTest.gestor_reads_customer_linked_to_own_dealer
+  [OK  ] CustomerServiceTest.service_principal_reads_any_customer
+  [OK  ] CustomerServiceTest.role_permissions_match_matrix
+  [OK  ] CustomerServiceTest.parse_user_role_rejects_service_and_unknown
+  [OK  ] CustomerServiceTest.dealer_scoped_user_without_dealer_is_forbidden
+  [OK  ] CustomerServiceTest.gestor_from_other_dealer_is_forbidden
+  [OK  ] CustomerServiceTest.atendente_from_other_dealer_is_forbidden
+  [OK  ] CustomerServiceTest.atendente_reads_customer_linked_to_own_dealer
+  [OK  ] ScoreServiceTest.atendente_reads_scores_of_own_dealer_customers
+  [OK  ] ScoreServiceTest.unknown_customer_yields_customer_not_found
+  [OK  ] ScoreServiceTest.gestor_cannot_read_scores_of_other_dealer_customers
+  [OK  ] ScoreServiceTest.missing_score_yields_score_not_found
+  [OK  ] ScoreServiceTest.admin_reads_scores
+  [OK  ] ScoreServiceTest.service_principal_reads_scores
+  [OK  ] ServiceEventServiceTest.gestor_creates_event_for_own_dealer_and_it_is_audited
+  [OK  ] ServiceEventServiceTest.listing_is_scoped_to_the_dealer_of_atendente
+  [OK  ] ServiceEventServiceTest.malformed_vin_yields_400_and_does_not_touch_repositories
+  [OK  ] ServiceEventServiceTest.deleting_unknown_event_yields_404
+  [OK  ] ServiceEventServiceTest.unknown_dealer_code_yields_422
+  [OK  ] ServiceEventServiceTest.unknown_vin_yields_422_and_does_not_insert
+  [OK  ] ServiceEventServiceTest.duplicate_event_yields_409
+  [OK  ] ServiceEventServiceTest.out_of_range_service_code_is_rejected_as_defense_in_depth
+  [OK  ] ServiceEventServiceTest.reading_another_dealers_event_is_forbidden
+  [OK  ] ServiceEventServiceTest.gestor_cannot_create_event_for_another_dealer
+  [OK  ] LogSanitizerTest.null_is_rendered_explicitly
+  [OK  ] LogSanitizerTest.regular_text_and_accents_are_kept
+  [OK  ] LogSanitizerTest.other_control_characters_are_replaced
+  [OK  ] LogSanitizerTest.long_values_are_truncated
+  [OK  ] LogSanitizerTest.line_breaks_cannot_forge_new_log_lines
+  [OK  ] SecureXmlTest.plain_document_without_doctype_is_parsed
+  [OK  ] SecureXmlTest.factory_disables_xinclude_and_entity_expansion
+  [OK  ] SecureXmlTest.doctype_with_external_entity_is_rejected
+  [OK  ] SecureXmlTest.internal_entity_expansion_bomb_is_rejected
+  [OK  ] ValidationsTest.validateUuid_accepts_valid_uuid
+  [OK  ] ValidationsTest.validateUuid_rejects_bad_format
+  [OK  ] ValidationsTest.validateLimit_integer_returns_default_when_null
+  [OK  ] ValidationsTest.validateLimit_rejects_zero_or_negative
+  [OK  ] ValidationsTest.validateLimit_integer_rejects_zero_or_negative
+  [OK  ] ValidationsTest.validateUuid_rejects_empty
+  [OK  ] ValidationsTest.validateLimit_returns_default_when_blank
+  [OK  ] ValidationsTest.validateVin_uppercases_and_accepts
+  [OK  ] ValidationsTest.validateVin_rejects_forbidden_chars
+  [OK  ] ValidationsTest.validateLimit_rejects_non_integer
+  [OK  ] ValidationsTest.validateLimit_integer_clamps_to_max
+  [OK  ] ValidationsTest.validateEnum_accepts_whitelisted_value
+  [OK  ] ValidationsTest.validateLimit_clamps_to_max
+  [OK  ] ValidationsTest.validateEnum_returns_empty_on_blank
+  [OK  ] ValidationsTest.validateEnum_rejects_unknown_value
+  [OK  ] ValidationsTest.validateUuid_trims_whitespace
+  [OK  ] ValidationsTest.validateVin_rejects_wrong_length

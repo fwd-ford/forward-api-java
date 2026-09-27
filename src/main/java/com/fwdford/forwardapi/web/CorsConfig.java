@@ -1,4 +1,4 @@
-// CORS configuration with explicit origin allowlist. Wildcard is never accepted.
+// CORS configuration with explicit origin allowlist. Wildcard entries are dropped.
 // Configuracao CORS com allowlist explicita; nunca aceita curinga.
 package com.fwdford.forwardapi.web;
 
@@ -22,10 +22,29 @@ public class CorsConfig {
   @Bean
   @Primary
   public CorsConfigurationSource corsConfigurationSource(AppProperties props) {
+    List<String> origins =
+        props.allowedOrigins() == null
+            ? List.of()
+            : props.allowedOrigins().stream()
+                .map(String::trim)
+                .filter(o -> !o.isEmpty() && !o.contains("*"))
+                .toList();
     CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(props.allowedOrigins());
+    cfg.setAllowedOrigins(origins);
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id", "X-API-Key"));
+    cfg.setAllowedHeaders(
+        List.of("Authorization", "Content-Type", "Accept", "X-Request-Id", "X-API-Key"));
+    // Headers the browser may read from responses (pagination, tracing, rate limit).
+    cfg.setExposedHeaders(
+        List.of(
+            "Location",
+            "X-Total-Count",
+            "X-Request-Id",
+            "Retry-After",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "Deprecation",
+            "Link"));
     cfg.setAllowCredentials(true);
     cfg.setMaxAge(600L);
 

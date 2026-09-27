@@ -1,0 +1,24 @@
+flowchart LR
+  subgraph CLI["Clientes"]
+    MOB["forward-mobile<br/>React Native + Expo<br/>app do atendente"]
+    WEB["forward-web<br/>SvelteKit<br/>painel do gestor"]
+    LEG["Sistemas legados<br/>cliente SOAP"]
+  end
+  subgraph INT["Integrações"]
+    N8N["n8n<br/>alertas WhatsApp e rotinas"]
+    ML["forward-ml<br/>Python + XGBoost<br/>score de churn (batch)"]
+  end
+  subgraph RENDER["Render - web service Docker (plano free), TLS na borda"]
+    API["forward-api-java<br/>Spring Boot 3.5 / Java 17<br/>REST /api/v1 + SOAP GetVehicle<br/>emite e valida JWT, RBAC"]
+  end
+  subgraph SUPA["Supabase (sa-east-1)"]
+    PG[("PostgreSQL<br/>esquema forward-infra 001-013<br/>+ Flyway V14, V15 e bootstrap")]
+  end
+  EMB[("PostgreSQL 16 embarcado<br/>perfis demo e test")]
+  MOB -- "HTTPS JSON<br/>Bearer JWT" --> API
+  WEB -- "HTTPS JSON<br/>Bearer JWT" --> API
+  LEG -- "SOAP 1.1<br/>Bearer JWT" --> API
+  N8N -- "HTTPS JSON<br/>X-API-Key (perfil SERVICE)" --> API
+  ML -- "grava churn_scores e leads" --> PG
+  API -- "JDBC + TLS (HikariCP)<br/>Session pooler :5432" --> PG
+  API -. "local, sem Docker" .-> EMB

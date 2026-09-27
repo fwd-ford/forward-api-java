@@ -1,9 +1,13 @@
-// GET /api/v1/customers/{id}. Validates UUID and delegates RBAC to the service.
-// GET /api/v1/customers/{id}: valida UUID e delega RBAC ao service.
+// Customer resource: GET /api/v1/customers/{id} and its sub-resource
+// GET /api/v1/customers/{id}/score (canonical location of the churn score).
+// Recurso cliente e sub-recurso score (localizacao canonica do score de churn).
 package com.fwdford.forwardapi.web;
 
+import com.fwdford.forwardapi.model.ChurnScore;
 import com.fwdford.forwardapi.model.Customer;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
 import com.fwdford.forwardapi.service.CustomerService;
+import com.fwdford.forwardapi.service.ScoreService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,9 +15,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,63 +24,66 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(value = "/api/v1/customers", produces = MediaType.APPLICATION_JSON_VALUE)
-@Tag(name = "Customers", description = "Customer profile lookup with RBAC.")
+@Tag(name = "Customers", description = "Clientes e score de churn (escopo por concessionária).")
 public class CustomerController {
 
-  private final CustomerService service;
+  private final CustomerService customers;
+  private final ScoreService scores;
 
-  public CustomerController(CustomerService service) {
-    this.service = service;
+  public CustomerController(CustomerService customers, ScoreService scores) {
+    this.customers = customers;
+    this.scores = scores;
   }
 
   @GetMapping("/{id}")
   @Operation(
       operationId = "getCustomer",
-      summary = "Get customer by id",
+      summary = "Cliente por id",
       description =
-          "Returns the customer profile for the given UUID. Authentication is required; in"
-              + " Sprint 1 any authenticated caller may read any customer (the mobile app needs"
-              + " this for the Lead Detail flow — see fwd-ford/forward-api-java#23). Sprint 2"
-              + " will tighten access to dealer-scoped reads via the leads table.")
+          "Todos os perfis. ATENDENTE e GESTOR só enxergam clientes vinculados à própria"
+              + " concessionária (veículo atendido ou lead da concessionária); ADMIN vê todos.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
-        description = "Customer found",
+        description = "Cliente encontrado",
         content = @Content(schema = @Schema(implementation = Customer.class))),
-    @ApiResponse(
-        responseCode = "400",
-        description = "Invalid UUID",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "401",
-        description = "Missing or invalid token",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "403",
-        description = "Forbidden by RBAC",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "404",
-        description = "Customer not found",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "429",
-        description = "Rate limit exceeded",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "400", ref = "BadRequest"),
+    @ApiResponse(responseCode = "401", ref = "Unauthorized"),
+    @ApiResponse(responseCode = "403", ref = "Forbidden"),
+    @ApiResponse(responseCode = "404", ref = "NotFound"),
+    @ApiResponse(responseCode = "429", ref = "TooManyRequests")
   })
   public Customer get(
-      @Parameter(
-              description = "Customer UUID.",
-              required = true,
-              schema = @Schema(format = "uuid"),
-              example = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10")
+      @Parameter(description = "UUID do cliente.", example = "11111111-1111-1111-1111-111111111001")
           @PathVariable
           String id,
-      HttpServletRequest req) {
-    String validId = Validations.validateUuid("id", id);
-    AuthPrincipal p = (AuthPrincipal) req.getAttribute(WebAttrs.PRINCIPAL);
-    String sub = p != null ? p.sub() : null;
-    String role = p != null ? p.role() : null;
-    return service.get(validId, sub, role);
+      @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser user) {
+    return customers.get(Validations.validateUuid("id", id), user);
+  }
+
+  @GetMapping("/{id}/score")
+  @Operation(
+      operationId = "getCustomerScore",
+      summary = "Score de churn atual do cliente",
+      description =
+          "Último score calculado pelo forward-ml para o cliente. Mesmas regras de escopo de"
+              + " GET /api/v1/customers/{id}. 404 SCORE_NOT_FOUND quando não há score.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Score encontrado",
+        content = @Content(schema = @Schema(implementation = ChurnScore.class))),
+    @ApiResponse(responseCode = "400", ref = "BadRequest"),
+    @ApiResponse(responseCode = "401", ref = "Unauthorized"),
+    @ApiResponse(responseCode = "403", ref = "Forbidden"),
+    @ApiResponse(responseCode = "404", ref = "NotFound"),
+    @ApiResponse(responseCode = "429", ref = "TooManyRequests")
+  })
+  public ChurnScore score(
+      @Parameter(description = "UUID do cliente.", example = "11111111-1111-1111-1111-111111111001")
+          @PathVariable
+          String id,
+      @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser user) {
+    return scores.getCurrent(Validations.validateUuid("id", id), user);
   }
 }

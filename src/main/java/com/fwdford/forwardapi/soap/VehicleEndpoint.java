@@ -1,13 +1,17 @@
-// SOAP endpoint for the vehicles service. Single operation: GetVehicle.
-// Produces typed XML by hand to avoid JAXB class generation overhead.
-// Endpoint SOAP de veiculos: uma operacao (GetVehicle). XML tipado manualmente sem JAXB gen.
+// SOAP endpoint for the vehicles service. Single operation: GetVehicle (contract-first,
+// xsd/vehicles.xsd). Requires a valid Bearer JWT (enforced by the Spring Security chain,
+// which also covers the /soap/* servlet) and applies the same dealer scoping as the REST
+// GET /api/v1/vehicles/{vin}. Builds the response DOM by hand to avoid JAXB generation.
+// Endpoint SOAP de veiculos (GetVehicle): exige JWT e aplica o mesmo escopo do REST.
 package com.fwdford.forwardapi.soap;
 
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.Vehicle;
+import com.fwdford.forwardapi.security.CurrentUser;
 import com.fwdford.forwardapi.service.VehicleService;
+import com.fwdford.forwardapi.util.SecureXml;
 import com.fwdford.forwardapi.web.Validations;
-import javax.xml.transform.dom.DOMResult;
+import javax.xml.parsers.ParserConfigurationException;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 import org.springframework.ws.server.endpoint.annotation.RequestPayload;
@@ -29,33 +33,30 @@ public class VehicleEndpoint {
     this.service = service;
   }
 
+  // Spring WS maps org.w3c.dom.Element both as request and response payload
+  // (DomPayloadMethodProcessor). A DOMResult return type has no adapter and failed.
+  // Element e suportado como entrada e saida; DOMResult nao tinha adaptador.
   @PayloadRoot(namespace = NS, localPart = "GetVehicleRequest")
   @ResponsePayload
-  public DOMResult getVehicle(@RequestPayload Element request) throws Exception {
+  public Element getVehicle(@RequestPayload Element request) throws ParserConfigurationException {
     String rawVin = extractText(request, "VIN");
-    String vin;
-    try {
-      vin = Validations.validateVin(rawVin);
-    } catch (ApiException ex) {
-      throw new SoapClientFault(ex.detail());
-    }
-
     Vehicle v;
     try {
-      v = service.get(vin);
+      String vin = Validations.validateVin(rawVin);
+      v = service.get(vin, CurrentUser.require());
     } catch (ApiException ex) {
       throw new SoapClientFault(ex.detail());
     }
 
-    Document doc =
-        javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+    // Hardened factory (no DOCTYPE, no external entities) even though it only builds output.
+    Document doc = SecureXml.documentBuilderFactory().newDocumentBuilder().newDocument();
     Element response = doc.createElementNS(NS, "GetVehicleResponse");
     doc.appendChild(response);
     appendChild(doc, response, "VIN", v.vin());
     appendChild(doc, response, "Model", v.model());
     appendChild(doc, response, "Year", Integer.toString(v.year()));
     appendChild(doc, response, "Discontinued", Boolean.toString(v.discontinued()));
-    return new DOMResult(doc);
+    return response;
   }
 
   private static String extractText(Element parent, String name) {
@@ -72,11 +73,13 @@ public class VehicleEndpoint {
     parent.appendChild(el);
   }
 
-  // Sends back a SOAP Fault with faultcode=Client when the caller submits
-  // an invalid payload (bad VIN, missing element, unknown vehicle).
-  // Retorna um SOAP Fault com faultcode=Client quando o chamador manda payload invalido.
-  @SoapFault(faultCode = FaultCode.CLIENT, faultStringOrReason = "Requisicao SOAP invalida")
+  // SOAP Fault with faultcode=Client when the caller submits an invalid payload (bad VIN,
+  // missing element, unknown vehicle, other dealer). The fault string is the pt-BR detail.
+  // SOAP Fault (Client) com a mensagem em portugues como faultstring.
+  @SoapFault(faultCode = FaultCode.CLIENT, locale = "pt")
   public static class SoapClientFault extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
     public SoapClientFault(String message) {
       super(message);
     }

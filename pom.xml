@@ -13,7 +13,7 @@
 
     <groupId>com.fwdford</groupId>
     <artifactId>forward-api</artifactId>
-    <version>0.1.0</version>
+    <version>3.0.0</version>
     <name>forward-api</name>
     <description>HTTP and SOAP API for ForwardService (Ford Challenge 2026)</description>
 
@@ -22,7 +22,6 @@
         <jjwt.version>0.12.5</jjwt.version>
         <bucket4j.version>8.7.0</bucket4j.version>
         <logstash-logback.version>7.4</logstash-logback.version>
-        <nimbus-jose.version>9.40</nimbus-jose.version>
         <postgresql.version>42.7.11</postgresql.version>
         <tomcat.version>10.1.55</tomcat.version>
         <spotless.version>2.43.0</spotless.version>
@@ -30,7 +29,25 @@
         <checkstyle.version>10.17.0</checkstyle.version>
         <spotbugs.plugin.version>4.8.6.4</spotbugs.plugin.version>
         <springdoc.version>2.7.0</springdoc.version>
+        <zonky-embedded-postgres.version>2.2.2</zonky-embedded-postgres.version>
+        <zonky-postgres-binaries.version>16.15.0</zonky-postgres-binaries.version>
+        <jacoco.version>0.8.15</jacoco.version>
+        <!-- Override Boot-managed 3.17.0 (CVE-2025-48924). -->
+        <commons-lang3.version>3.20.0</commons-lang3.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Pins the embedded PostgreSQL binaries to major 16 (same as forward-infra). -->
+            <dependency>
+                <groupId>io.zonky.test.postgres</groupId>
+                <artifactId>embedded-postgres-binaries-bom</artifactId>
+                <version>${zonky-postgres-binaries.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -66,6 +83,37 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!--
+          Embedded PostgreSQL 16 (no Docker) used by the "demo" and "test" profiles.
+          Native binaries are large, so only Linux x86_64 (CI, Docker, Render) is always
+          packaged; Windows, macOS and Linux arm64 binaries are added by the OS-activated
+          profiles at the end of this file when building on those platforms.
+        -->
+        <dependency>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <version>${zonky-embedded-postgres.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.zonky.test.postgres</groupId>
+            <artifactId>embedded-postgres-binaries-linux-amd64</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -83,11 +131,6 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>nimbus-jose-jwt</artifactId>
-            <version>${nimbus-jose.version}</version>
         </dependency>
 
         <dependency>
@@ -126,6 +169,53 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- HTTP-level integration tests (*IT) run in the same phase as unit tests:
+                         the database is an in-process embedded PostgreSQL, no external services. -->
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>surefire-html-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report-only</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
@@ -212,5 +302,57 @@
             </build>
         </profile>
 
+        <!-- Embedded PostgreSQL binaries for the machine running the build (see dependencies). -->
+        <profile>
+            <id>embedded-pg-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>embedded-pg-macos</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>embedded-postgres-binaries-darwin-amd64</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>embedded-postgres-binaries-darwin-arm64v8</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>embedded-pg-linux-arm64</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>embedded-postgres-binaries-linux-arm64v8</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
     </profiles>
 </project>

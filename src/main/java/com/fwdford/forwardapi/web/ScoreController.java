@@ -1,8 +1,11 @@
-// GET /api/v1/scores/{customerId}. RBAC is applied inside the service layer.
-// GET /api/v1/scores/{customerId}: RBAC aplicado no service.
+// Deprecated alias GET /api/v1/scores/{customerId}. Kept for existing clients; answers
+// with Deprecation and Link (successor-version) headers pointing to the canonical
+// sub-resource GET /api/v1/customers/{id}/score.
+// Alias deprecado; aponta para GET /api/v1/customers/{id}/score via headers.
 package com.fwdford.forwardapi.web;
 
 import com.fwdford.forwardapi.model.ChurnScore;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
 import com.fwdford.forwardapi.service.ScoreService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,9 +14,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(value = "/api/v1/scores", produces = MediaType.APPLICATION_JSON_VALUE)
-@Tag(name = "Scores", description = "Customer churn score lookup.")
+@Tag(name = "Customers")
 public class ScoreController {
 
   private final ScoreService service;
@@ -32,49 +35,33 @@ public class ScoreController {
 
   @GetMapping("/{customerId}")
   @Operation(
-      operationId = "getCurrentChurnScore",
-      summary = "Get current churn score for a customer",
+      operationId = "getCurrentChurnScoreDeprecated",
+      summary = "Score de churn (alias deprecado)",
+      deprecated = true,
       description =
-          "Returns the most recent churn score computed for the given customer. "
-              + "RBAC is enforced inside the service layer.")
+          "Alias mantido por compatibilidade. Use GET /api/v1/customers/{id}/score. A resposta"
+              + " inclui os headers `Deprecation: true` e `Link` com rel=\"successor-version\".")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
-        description = "Score found",
+        description = "Score encontrado",
         content = @Content(schema = @Schema(implementation = ChurnScore.class))),
-    @ApiResponse(
-        responseCode = "400",
-        description = "Invalid customer UUID",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "401",
-        description = "Missing or invalid token",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "403",
-        description = "Forbidden by RBAC",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "404",
-        description = "No score available for this customer",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "429",
-        description = "Rate limit exceeded",
-        content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "400", ref = "BadRequest"),
+    @ApiResponse(responseCode = "401", ref = "Unauthorized"),
+    @ApiResponse(responseCode = "403", ref = "Forbidden"),
+    @ApiResponse(responseCode = "404", ref = "NotFound"),
+    @ApiResponse(responseCode = "429", ref = "TooManyRequests")
   })
-  public ChurnScore get(
-      @Parameter(
-              description = "Customer UUID.",
-              required = true,
-              schema = @Schema(format = "uuid"),
-              example = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10")
+  public ResponseEntity<ChurnScore> get(
+      @Parameter(description = "UUID do cliente.", example = "11111111-1111-1111-1111-111111111001")
           @PathVariable
           String customerId,
-      HttpServletRequest req) {
-    String validId = Validations.validateUuid("customerId", customerId);
-    AuthPrincipal p = (AuthPrincipal) req.getAttribute(WebAttrs.PRINCIPAL);
-    String role = p != null ? p.role() : null;
-    return service.getCurrent(validId, role);
+      @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser user) {
+    String id = Validations.validateUuid("customerId", customerId);
+    ChurnScore score = service.getCurrent(id, user);
+    return ResponseEntity.ok()
+        .header("Deprecation", "true")
+        .header("Link", "</api/v1/customers/" + id + "/score>; rel=\"successor-version\"")
+        .body(score);
   }
 }

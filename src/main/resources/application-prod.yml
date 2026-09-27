@@ -1,0 +1,24 @@
+# Production profile (Render web service + Supabase PostgreSQL through the Session pooler).
+#
+# The Supabase database already has the forward-infra schema (migrations 001-013 applied
+# outside Flyway) and the original seed. Flyway therefore baselines at version 13 on the
+# first start, so only V14+ and the idempotent bootstrap run there. On an empty database
+# baselining does not apply and every migration runs normally.
+# Perfil de producao: baseline 13 no schema do forward-infra/Supabase, depois V14+ e bootstrap.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/bootstrap
+    baseline-on-migrate: true
+    baseline-version: "13"
+    baseline-description: forward-infra schema 001-013
+  datasource:
+    hikari:
+      # Small pool: Render free (512 MB) and the Supabase session pooler connection limit.
+      maximum-pool-size: ${DATABASE_POOL_SIZE:5}
+      minimum-idle: 1
+      connection-timeout: 20000
+
+forward:
+  # The prod profile is production unless ENV says otherwise (JWT_SECRET becomes mandatory).
+  env: ${ENV:production}
+  log-format: ${LOG_FORMAT:JSON}
