@@ -445,8 +445,9 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
    - `DATABASE_PASSWORD`: a senha do banco do projeto Supabase
    - `ADMIN_BOOTSTRAP_PASSWORD` (opcional): senha forte para criar `admin@forward.dev`. Deixe em
      branco para não criar nenhum ADMIN. Guarde-a num cofre de senhas; ela não aparece em logs.
-   - `DEMO_USERS_PASSWORD` já vem com `Forward@2026` (usuários de teste GESTOR/ATENDENTE); troque
-     aqui se não quiser a senha publicada.
+   - `DEMO_USERS_PASSWORD` não faz parte do Blueprint: sem ela, os usuários de teste
+     GESTOR/ATENDENTE usam `Forward@2026`. Para trocar a senha publicada, adicione a variável em
+     **Environment** antes do primeiro deploy.
 5. Clique em **Apply**. O primeiro build leva alguns minutos; acompanhe em **Logs**. Na primeira
    inicialização o Flyway cria o baseline na versão 13, aplica V14 a V16 e o bootstrap de dados.
 6. Teste: `curl https://forwardservice-api.onrender.com/health` e depois o login com
