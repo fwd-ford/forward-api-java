@@ -48,6 +48,11 @@ class JwtServiceTest {
   }
 
   private static String customToken(String secret, String issuer, String audience, String role) {
+    return customToken(secret, issuer, audience, role, 0);
+  }
+
+  private static String customToken(
+      String secret, String issuer, String audience, String role, Object tokenVersion) {
     var b =
         Jwts.builder()
             .id(UUID.randomUUID().toString())
@@ -62,6 +67,9 @@ class JwtServiceTest {
             .claim("dealer_id", DEALER_1);
     if (role != null) {
       b.claim("role", role);
+    }
+    if (tokenVersion != null) {
+      b.claim("token_version", tokenVersion);
     }
     return b.signWith(key(secret), Jwts.SIG.HS256).compact();
   }
@@ -94,6 +102,7 @@ class JwtServiceTest {
     assertEquals("ATENDENTE", claims.get("role").asText());
     assertEquals(DEALER_1, claims.get("dealer_id").asText());
     assertEquals(issued.jti(), claims.get("jti").asText());
+    assertEquals(0, claims.get("token_version").asLong());
     assertEquals(3600, claims.get("exp").asLong() - claims.get("iat").asLong());
   }
 
@@ -108,6 +117,34 @@ class JwtServiceTest {
         new ObjectMapper().readTree(Base64.getUrlDecoder().decode(token.split("\\.")[1]));
     assertNull(claims.get("dealer_id"));
     assertEquals(admin, jwt.parse(token));
+  }
+
+  @Test
+  void token_version_round_trips() {
+    AuthenticatedUser v7 =
+        new AuthenticatedUser(
+            USER_ID, "atendente@forward.dev", "Beatriz Santos", Role.ATENDENTE, DEALER_1, 7);
+    JwtService jwt = serviceAt(T0);
+    assertEquals(7, jwt.parse(jwt.issue(v7).token()).tokenVersion());
+  }
+
+  @Test
+  void missing_or_malformed_token_version_is_rejected() {
+    assertThrows(
+        InvalidTokenException.class,
+        () ->
+            serviceAt(T0)
+                .parse(customToken(SECRET, "forward-api", "forward-app", "ATENDENTE", null)));
+    assertThrows(
+        InvalidTokenException.class,
+        () ->
+            serviceAt(T0)
+                .parse(customToken(SECRET, "forward-api", "forward-app", "ATENDENTE", -1)));
+    assertThrows(
+        InvalidTokenException.class,
+        () ->
+            serviceAt(T0)
+                .parse(customToken(SECRET, "forward-api", "forward-app", "ATENDENTE", "1")));
   }
 
   @Test

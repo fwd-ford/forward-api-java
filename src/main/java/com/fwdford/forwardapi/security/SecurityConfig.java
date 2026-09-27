@@ -63,10 +63,11 @@ public class SecurityConfig {
       AppProperties props,
       CorsConfigurationSource corsSource,
       ProblemAuthenticationEntryPoint entryPoint,
-      ProblemAccessDeniedHandler accessDeniedHandler)
+      ProblemAccessDeniedHandler accessDeniedHandler,
+      UserStateCache userStates)
       throws Exception {
     JwtAuthenticationFilter jwtFilter =
-        new JwtAuthenticationFilter(jwtService, props.internalApiKey());
+        new JwtAuthenticationFilter(jwtService, props.internalApiKey(), userStates);
 
     http.cors(c -> c.configurationSource(corsSource))
         .csrf(csrf -> csrf.disable())

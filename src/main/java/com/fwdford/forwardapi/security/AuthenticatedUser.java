@@ -1,9 +1,16 @@
 // Principal stored in the Spring SecurityContext after a JWT (or the internal API key)
-// is validated. Controllers receive it through @AuthenticationPrincipal.
+// is validated. Controllers receive it through @AuthenticationPrincipal. tokenVersion is the
+// app_users.token_version the JWT was issued with (0 for the SERVICE principal).
 // Principal autenticado colocado no SecurityContext apos validar o JWT ou a API key.
 package com.fwdford.forwardapi.security;
 
-public record AuthenticatedUser(String id, String email, String name, Role role, String dealerId) {
+public record AuthenticatedUser(
+    String id, String email, String name, Role role, String dealerId, long tokenVersion) {
+
+  /** Principal for token_version 0 (freshly created users, tests, SERVICE). */
+  public AuthenticatedUser(String id, String email, String name, Role role, String dealerId) {
+    this(id, email, name, role, dealerId, 0);
+  }
 
   /** Synthetic principal used for server-to-server calls authenticated by X-API-Key. */
   public static AuthenticatedUser service() {

@@ -1,7 +1,9 @@
 // Issues and validates the API's own JWTs (HS256). Replaces the Supabase validators:
 // the API is now its own identity provider.
 //   iss = forward-api, aud = forward-app, sub = user id, plus email, name, role,
-//   dealer_id (dealer-scoped roles only), iat, nbf, exp and a random jti.
+//   dealer_id (dealer-scoped roles only), token_version, iat, nbf, exp and a random jti.
+// token_version is compared with app_users.token_version on every request (see
+// JwtAuthenticationFilter), which is how tokens are revoked before they expire.
 // Validation checks signature, algorithm, exp/nbf (30 s clock skew), iss, aud and the
 // presence/format of every claim the authorization layer relies on.
 // Emite e valida os JWTs da propria API (HS256): assinatura, exp, iss, aud e claims.
@@ -37,6 +39,7 @@ public final class JwtService {
   public static final String CLAIM_NAME = "name";
   public static final String CLAIM_ROLE = "role";
   public static final String CLAIM_DEALER_ID = "dealer_id";
+  public static final String CLAIM_TOKEN_VERSION = "token_version";
   public static final String ALGORITHM = "HS256";
 
   /** HS256 needs a key of at least 256 bits (RFC 7518, section 3.2). */
@@ -126,7 +129,8 @@ public final class JwtService {
             .expiration(Date.from(expiresAt))
             .claim(CLAIM_EMAIL, user.email())
             .claim(CLAIM_NAME, user.name())
-            .claim(CLAIM_ROLE, user.role().name());
+            .claim(CLAIM_ROLE, user.role().name())
+            .claim(CLAIM_TOKEN_VERSION, user.tokenVersion());
     if (user.dealerId() != null) {
       builder.claim(CLAIM_DEALER_ID, user.dealerId());
     }
@@ -187,7 +191,12 @@ public final class JwtService {
     if (role.dealerScoped() && dealerId == null) {
       throw InvalidTokenException.invalid("dealer_id required");
     }
-    return new AuthenticatedUser(sub, email, name, role, dealerId);
+    Object version = c.get(CLAIM_TOKEN_VERSION);
+    if (!(version instanceof Integer || version instanceof Long)
+        || ((Number) version).longValue() < 0) {
+      throw InvalidTokenException.invalid("token_version");
+    }
+    return new AuthenticatedUser(sub, email, name, role, dealerId, ((Number) version).longValue());
   }
 
   public long ttlSeconds() {

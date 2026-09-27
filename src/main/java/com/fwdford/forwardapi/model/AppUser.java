@@ -17,7 +17,8 @@ public record AppUser(
     boolean active,
     OffsetDateTime lastLoginAt,
     OffsetDateTime createdAt,
-    OffsetDateTime updatedAt) {
+    OffsetDateTime updatedAt,
+    long tokenVersion) {
 
   // Keeps the password hash out of logs and exception messages.
   @Override

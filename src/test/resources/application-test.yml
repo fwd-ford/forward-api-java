@@ -15,6 +15,8 @@ forward:
   jwt:
     secret: fixture-test-only-jwt-secret-0123456789abcdef
     expiration-minutes: 60
+    # No caching in tests: every request sees the latest user state (revocation tests).
+    user-state-cache-ttl: 0s
   internal-api-key: fixture-test-internal-api-key
   log-format: CONSOLE
   embedded-db:

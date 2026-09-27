@@ -36,6 +36,12 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
       code = "AUTH_TOKEN_EXPIRED";
       detail = "Token expirado. Faça login novamente.";
       challenge = "Bearer realm=\"forward-api\", error=\"invalid_token\"";
+    } else if (failure == JwtAuthenticationFilter.AuthFailure.TOKEN_REVOKED) {
+      code = "AUTH_TOKEN_REVOKED";
+      detail =
+          "Sessão revogada: seu usuário foi alterado, desativado ou removido. Faça login"
+              + " novamente.";
+      challenge = "Bearer realm=\"forward-api\", error=\"invalid_token\"";
     } else if (failure == JwtAuthenticationFilter.AuthFailure.TOKEN_INVALID) {
       code = "AUTH_TOKEN_INVALID";
       detail = "Token inválido. Envie um JWT emitido por POST /api/v1/auth/login.";

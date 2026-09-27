@@ -10,13 +10,18 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Credential resolution of the authentication filter (no Spring context). */
+/** Credential resolution of the authentication filter, including revocation (no Spring). */
 class JwtAuthenticationFilterTest {
 
   private static final String SECRET = "fixture-unit-test-jwt-secret-0123456789abcdef";
   private static final String API_KEY = "fixture-internal-api-key";
+  private static final String DEALER_1 = "d0000000-0000-4000-8000-000000000001";
+  private static final String DEALER_2 = "d0000000-0000-4000-8000-000000000002";
   private static final AppProperties.Jwt CFG =
       new AppProperties.Jwt(SECRET, 60, "forward-api", "forward-app", 30);
   private static final AuthenticatedUser GESTOR =
@@ -25,10 +30,21 @@ class JwtAuthenticationFilterTest {
           "gestor@forward.dev",
           "Gustavo Mendes",
           Role.GESTOR,
-          "d0000000-0000-4000-8000-000000000001");
+          DEALER_1);
 
   private final JwtService jwt = new JwtService(CFG, false, Clock.systemUTC());
-  private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwt, API_KEY);
+  private final Map<String, UserSecurityState> db = new HashMap<>();
+  private final UserStateCache states =
+      new UserStateCache(id -> Optional.ofNullable(db.get(id)), Duration.ZERO, System::nanoTime);
+  private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwt, API_KEY, states);
+
+  JwtAuthenticationFilterTest() {
+    db.put(GESTOR.id(), new UserSecurityState(true, Role.GESTOR, DEALER_1, 0));
+  }
+
+  private Resolution withToken(AuthenticatedUser user) {
+    return filter.resolveCredentials(null, "Bearer " + jwt.issue(user).token());
+  }
 
   @Test
   void no_credentials_is_anonymous_without_failure() {
@@ -38,9 +54,8 @@ class JwtAuthenticationFilterTest {
   }
 
   @Test
-  void valid_bearer_token_yields_the_principal() {
-    String token = jwt.issue(GESTOR).token();
-    assertEquals(GESTOR, filter.resolveCredentials(null, "Bearer " + token).principal());
+  void valid_bearer_token_of_a_current_user_yields_the_principal() {
+    assertEquals(GESTOR, withToken(GESTOR).principal());
   }
 
   @Test
@@ -71,7 +86,48 @@ class JwtAuthenticationFilterTest {
   }
 
   @Test
-  void matching_api_key_yields_the_service_principal() {
+  void token_of_a_deleted_user_is_revoked() {
+    db.remove(GESTOR.id());
+    Resolution r = withToken(GESTOR);
+    assertNull(r.principal());
+    assertEquals(AuthFailure.TOKEN_REVOKED, r.failure());
+  }
+
+  @Test
+  void token_of_a_deactivated_user_is_revoked() {
+    db.put(GESTOR.id(), new UserSecurityState(false, Role.GESTOR, DEALER_1, 0));
+    assertEquals(AuthFailure.TOKEN_REVOKED, withToken(GESTOR).failure());
+  }
+
+  @Test
+  void token_with_an_outdated_role_is_revoked() {
+    db.put(GESTOR.id(), new UserSecurityState(true, Role.ATENDENTE, DEALER_1, 0));
+    assertEquals(AuthFailure.TOKEN_REVOKED, withToken(GESTOR).failure());
+  }
+
+  @Test
+  void token_with_an_outdated_dealer_is_revoked() {
+    db.put(GESTOR.id(), new UserSecurityState(true, Role.GESTOR, DEALER_2, 0));
+    assertEquals(AuthFailure.TOKEN_REVOKED, withToken(GESTOR).failure());
+  }
+
+  @Test
+  void token_with_an_outdated_version_is_revoked_even_if_role_and_dealer_match() {
+    db.put(GESTOR.id(), new UserSecurityState(true, Role.GESTOR, DEALER_1, 1));
+    assertEquals(AuthFailure.TOKEN_REVOKED, withToken(GESTOR).failure());
+  }
+
+  @Test
+  void token_issued_after_the_change_is_accepted() {
+    db.put(GESTOR.id(), new UserSecurityState(true, Role.GESTOR, DEALER_1, 3));
+    AuthenticatedUser fresh =
+        new AuthenticatedUser(GESTOR.id(), GESTOR.email(), GESTOR.name(), Role.GESTOR, DEALER_1, 3);
+    assertEquals(fresh, withToken(fresh).principal());
+  }
+
+  @Test
+  void matching_api_key_yields_the_service_principal_without_user_lookup() {
+    db.clear();
     Resolution r = filter.resolveCredentials(API_KEY, null);
     assertEquals(Role.SERVICE, r.principal().role());
   }
@@ -86,9 +142,21 @@ class JwtAuthenticationFilterTest {
 
   @Test
   void api_key_is_rejected_when_not_configured() {
-    JwtAuthenticationFilter noKey = new JwtAuthenticationFilter(jwt, "");
+    JwtAuthenticationFilter noKey = new JwtAuthenticationFilter(jwt, "", states);
     assertEquals(AuthFailure.API_KEY_INVALID, noKey.resolveCredentials("", null).failure());
     assertEquals(AuthFailure.API_KEY_INVALID, noKey.resolveCredentials(API_KEY, null).failure());
+  }
+
+  @Test
+  void revocation_reasons() {
+    UserSecurityState current = new UserSecurityState(true, Role.GESTOR, DEALER_1, 0);
+    assertNull(JwtAuthenticationFilter.revocationReason(GESTOR, Optional.of(current)));
+    assertEquals(
+        "user_not_found", JwtAuthenticationFilter.revocationReason(GESTOR, Optional.empty()));
+    assertEquals(
+        "dealer_changed",
+        JwtAuthenticationFilter.revocationReason(
+            GESTOR, Optional.of(new UserSecurityState(true, Role.GESTOR, null, 0))));
   }
 
   @Test

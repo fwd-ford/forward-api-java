@@ -91,7 +91,7 @@ class ProdMigrationIT {
     for (MigrateOutput m : result.migrations) {
       applied.add(m.version.isEmpty() ? "R:" + m.description : "V" + m.version);
     }
-    assertThat(applied).containsExactly("V14", "V15", "R:bootstrap demo data");
+    assertThat(applied).containsExactly("V14", "V15", "V16", "R:bootstrap demo data");
     assertThat(
             count(
                 ds,
@@ -140,6 +140,9 @@ class ProdMigrationIT {
                     + " GROUP BY customer_id HAVING COUNT(*) > 1) duplicated"))
         .isZero();
 
+    // V16: token_version defaults to 0 for the bootstrap users.
+    assertThat(count(ds, "SELECT COUNT(*) FROM app_users WHERE token_version <> 0")).isZero();
+
     // V15 on existing data and V14 hardening for the Supabase Data API.
     assertThat(
             count(
@@ -169,7 +172,7 @@ class ProdMigrationIT {
     MigrateResult result = prodFlyway(ds).migrate();
 
     assertThat(result.success).isTrue();
-    assertThat(result.migrationsExecuted).isEqualTo(16);
+    assertThat(result.migrationsExecuted).isEqualTo(17);
     assertThat(count(ds, "SELECT COUNT(*) FROM leads")).isEqualTo(TestData.LEADS_TOTAL);
     assertThat(count(ds, "SELECT COUNT(*) FROM app_users")).isEqualTo(4);
     assertThat(string(ds, "SELECT id::text FROM dealers WHERE code = 'F0001'"))

@@ -6,6 +6,7 @@ package com.fwdford.forwardapi.repository;
 
 import com.fwdford.forwardapi.model.AppUser;
 import com.fwdford.forwardapi.security.Role;
+import com.fwdford.forwardapi.security.UserSecurityState;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -24,7 +25,7 @@ public class UserRepository {
       """
       SELECT u.id::text AS id, u.email, u.password_hash, u.full_name, u.role,
              u.dealer_id::text AS dealer_id, d.name AS dealer_name, u.active,
-             u.last_login_at, u.created_at, u.updated_at
+             u.last_login_at, u.created_at, u.updated_at, u.token_version
       FROM app_users u
       LEFT JOIN dealers d ON d.id = u.dealer_id
       """;
@@ -50,7 +51,8 @@ public class UserRepository {
              role = :role,
              dealer_id = :dealerId,
              active = :active,
-             password_hash = COALESCE(:passwordHash, password_hash)
+             password_hash = COALESCE(:passwordHash, password_hash),
+             token_version = token_version + CASE WHEN :revokeTokens THEN 1 ELSE 0 END
        WHERE id = :id
       """;
 
@@ -127,8 +129,18 @@ public class UserRepository {
     return UUID.fromString(id);
   }
 
+  /**
+   * Updates the user. revokeTokens increments token_version, which invalidates every JWT issued
+   * before this change.
+   */
   public int update(
-      UUID id, String fullName, Role role, UUID dealerId, boolean active, String newPasswordHash) {
+      UUID id,
+      String fullName,
+      Role role,
+      UUID dealerId,
+      boolean active,
+      String newPasswordHash,
+      boolean revokeTokens) {
     MapSqlParameterSource params =
         new MapSqlParameterSource()
             .addValue("id", id)
@@ -136,7 +148,8 @@ public class UserRepository {
             .addValue("role", role.name())
             .addValue("dealerId", dealerId, Types.OTHER)
             .addValue("active", active)
-            .addValue("passwordHash", newPasswordHash, Types.VARCHAR);
+            .addValue("passwordHash", newPasswordHash, Types.VARCHAR)
+            .addValue("revokeTokens", revokeTokens);
     return jdbc.update(UPDATE, params);
   }
 
@@ -169,6 +182,24 @@ public class UserRepository {
         rs.getBoolean("active"),
         rs.getObject("last_login_at", OffsetDateTime.class),
         rs.getObject("created_at", OffsetDateTime.class),
-        rs.getObject("updated_at", OffsetDateTime.class));
+        rs.getObject("updated_at", OffsetDateTime.class),
+        rs.getLong("token_version"));
+  }
+
+  /** Security-relevant state used to revoke tokens; empty when the user does not exist. */
+  public Optional<UserSecurityState> findSecurityState(UUID id) {
+    return jdbc
+        .query(
+            "SELECT active, role, dealer_id::text AS dealer_id, token_version"
+                + " FROM app_users WHERE id = :id",
+            new MapSqlParameterSource("id", id),
+            (rs, i) ->
+                new UserSecurityState(
+                    rs.getBoolean("active"),
+                    Role.valueOf(rs.getString("role")),
+                    rs.getString("dealer_id"),
+                    rs.getLong("token_version")))
+        .stream()
+        .findFirst();
   }
 }

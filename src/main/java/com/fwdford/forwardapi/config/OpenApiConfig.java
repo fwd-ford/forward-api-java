@@ -43,7 +43,10 @@ public class OpenApiConfig {
       (no Swagger UI, botão **Authorize**).
 
       Claims do token: `iss=forward-api`, `aud=forward-app`, `sub` (id do usuário), `email`, \
-      `name`, `role`, `dealer_id`, `iat`, `exp`, `jti`. Chamadas servidor-a-servidor (n8n) podem \
+      `name`, `role`, `dealer_id`, `token_version`, `iat`, `exp`, `jti`. A cada requisição a API \
+      confere o token com o estado atual do usuário: se ele foi desativado, excluído, mudou de \
+      perfil ou de concessionária (ou teve a senha redefinida), o token antigo recebe \
+      `401 AUTH_TOKEN_REVOKED` antes mesmo de expirar. Chamadas servidor-a-servidor (n8n) podem \
       usar o header `X-API-Key`.
 
       ## Perfis
@@ -145,8 +148,8 @@ public class OpenApiConfig {
     r.put(
         "Unauthorized",
         problem(
-            "Token ausente, inválido ou expirado (AUTH_REQUIRED, AUTH_TOKEN_INVALID,"
-                + " AUTH_TOKEN_EXPIRED)",
+            "Token ausente, inválido, expirado ou revogado (AUTH_REQUIRED, AUTH_TOKEN_INVALID,"
+                + " AUTH_TOKEN_EXPIRED, AUTH_TOKEN_REVOKED)",
             401,
             "AUTH_REQUIRED",
             "Autenticação necessária. Envie o header Authorization: Bearer <token>."));

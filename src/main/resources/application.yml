@@ -91,6 +91,9 @@ forward:
     issuer: forward-api
     audience: forward-app
     clock-skew-seconds: 30
+    # How long the user's state (active, role, dealer, token_version) checked on every request
+    # is cached. Revocation is immediate on this instance; 0 disables the cache.
+    user-state-cache-ttl: ${JWT_USER_STATE_CACHE_TTL:30s}
   internal-api-key: ${INTERNAL_API_KEY:}
   max-body-bytes: ${MAX_BODY_BYTES:1048576}
   # Log format consumed by logback-spring.xml: JSON or CONSOLE.

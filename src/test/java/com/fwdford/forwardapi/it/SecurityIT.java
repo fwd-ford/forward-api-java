@@ -41,6 +41,7 @@ class SecurityIT extends IntegrationTest {
         .claim("email", "admin@forward.dev")
         .claim("name", "Ana")
         .claim("role", "ADMIN")
+        .claim("token_version", 0)
         .signWith(
             new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"),
             Jwts.SIG.HS256)

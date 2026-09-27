@@ -74,7 +74,12 @@ public class AuthService {
 
     AuthenticatedUser principal =
         new AuthenticatedUser(
-            user.id(), user.email(), user.fullName(), user.role(), user.dealerId());
+            user.id(),
+            user.email(),
+            user.fullName(),
+            user.role(),
+            user.dealerId(),
+            user.tokenVersion());
     JwtService.IssuedToken token = jwtService.issue(principal);
     users.touchLastLogin(UUID.fromString(user.id()));
     audit.record(

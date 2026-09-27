@@ -14,6 +14,7 @@ import com.fwdford.forwardapi.repository.DealerRepository;
 import com.fwdford.forwardapi.repository.UserRepository;
 import com.fwdford.forwardapi.security.AuthenticatedUser;
 import com.fwdford.forwardapi.security.Role;
+import com.fwdford.forwardapi.security.UserStateCache;
 import com.fwdford.forwardapi.web.dto.CreateUserRequest;
 import com.fwdford.forwardapi.web.dto.MeResponse;
 import com.fwdford.forwardapi.web.dto.UpdateUserRequest;
@@ -35,13 +36,19 @@ public class UserService {
   private final DealerRepository dealers;
   private final PasswordEncoder encoder;
   private final AuditService audit;
+  private final UserStateCache userStates;
 
   public UserService(
-      UserRepository users, DealerRepository dealers, PasswordEncoder encoder, AuditService audit) {
+      UserRepository users,
+      DealerRepository dealers,
+      PasswordEncoder encoder,
+      AuditService audit,
+      UserStateCache userStates) {
     this.users = users;
     this.dealers = dealers;
     this.encoder = encoder;
     this.audit = audit;
+    this.userStates = userStates;
   }
 
   /** Current principal with fresh data from the database. */
@@ -145,7 +152,12 @@ public class UserService {
     }
     String newHash = req.password() == null ? null : encoder.encode(req.password());
 
-    users.update(id, name, role, dealerId, active, newHash);
+    // Any change to role, active, dealer or password revokes the tokens issued before, even
+    // when the new value equals the old one (so PATCH {"active": true} forces a new login).
+    boolean revokeTokens =
+        req.role() != null || req.active() != null || req.dealerId() != null || newHash != null;
+    users.update(id, name, role, dealerId, active, newHash, revokeTokens);
+    userStates.invalidateAfterCommit(id.toString());
     Map<String, Object> changes = new LinkedHashMap<>();
     if (req.name() != null) {
       changes.put("name", name);
@@ -162,6 +174,9 @@ public class UserService {
     if (newHash != null) {
       changes.put("password_reset", true);
     }
+    if (revokeTokens) {
+      changes.put("tokens_revoked", true);
+    }
     audit.record(actor, "user.updated", "app_user", id.toString(), changes);
     return UserResponse.from(load(id));
   }
@@ -174,6 +189,7 @@ public class UserService {
     }
     AppUser current = load(id);
     users.deleteById(id);
+    userStates.invalidateAfterCommit(id.toString());
     audit.record(
         actor,
         "user.deleted",
