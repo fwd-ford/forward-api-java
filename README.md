@@ -11,7 +11,7 @@ API REST e SOAP do **ForwardService**, plataforma de retenção de clientes da r
 
 - **Autenticação própria**: a API emite e valida os próprios JWTs (o Supabase Auth não é mais
   usado) e guarda os usuários em `app_users` com senha BCrypt.
-- **Produção**: web service Docker no **Render** (`https://forwardservice-api.onrender.com`) com o
+- **Produção**: web service Docker no **Render** (`https://forward-api-java.onrender.com`) com o
   banco **PostgreSQL do Supabase** (sa-east-1). No perfil `demo` a API roda com um
   **PostgreSQL 16 embarcado**, sem Docker e sem nenhum serviço externo.
 - **Segurança**: Spring Security stateless, JWT HS256 com `iss`, `aud`, `exp` e `jti`, perfis
@@ -198,7 +198,7 @@ curl -s -X POST http://localhost:8080/api/v1/auth/login \
 2. Use o token nas demais chamadas:
 
 ```bash
-BASE=http://localhost:8080   # ou https://forwardservice-api.onrender.com
+BASE=http://localhost:8080   # ou https://forward-api-java.onrender.com
 TOKEN=$(curl -s -X POST $BASE/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"gestor@forward.dev","password":"Forward@2026"}' | jq -r .access_token)
@@ -415,7 +415,7 @@ inexistente ou de outra concessionária gera um SOAP Fault `Client` com a mensag
 | Coleção Postman | [`docs/ForwardService.postman_collection.json`](docs/ForwardService.postman_collection.json) |
 
 A especificação traz a descrição em pt-BR com o fluxo de autenticação e os usuários de demo, os
-servidores `https://forwardservice-api.onrender.com` e `http://localhost:8080`, o esquema
+servidores `https://forward-api-java.onrender.com` e `http://localhost:8080`, o esquema
 `bearerAuth` aplicado a todas as operações exceto as públicas e as respostas de erro reais de
 cada operação. Para regenerar o snapshot com a API rodando:
 
@@ -425,12 +425,12 @@ curl -s http://localhost:8080/v3/api-docs.yaml -o openapi.yaml
 
 Na coleção Postman, rode primeiro a pasta **01 Auth**: os logins gravam `token` (GESTOR),
 `adminToken` e `atendenteToken` nas variáveis da coleção. Para usar a produção, troque a variável
-`baseUrl` para `https://forwardservice-api.onrender.com`.
+`baseUrl` para `https://forward-api-java.onrender.com`.
 
 ## Deploy no Render (Blueprint)
 
 A infraestrutura está descrita em [`render.yaml`](render.yaml): um web service Docker no plano
-free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`), health check em
+free, nome `forward-api-java` (URL `https://forward-api-java.onrender.com`), health check em
 `/health`, deploy automático a cada commit na `main`, perfil `prod`, `JWT_SECRET` e
 `INTERNAL_API_KEY` gerados pelo próprio Render e JVM ajustada para 512 MB.
 
@@ -438,7 +438,7 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
    `fwd-ford`).
 2. No painel, **New** > **Blueprint**.
 3. Selecione o repositório **fwd-ford/forward-api-java** (branch `main`); o Render lê o
-   `render.yaml` e mostra o serviço `forwardservice-api`.
+   `render.yaml` e mostra o serviço `forward-api-java`.
 4. Preencha as variáveis marcadas como `sync: false`:
    - `DATABASE_URL`: `jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require`
    - `DATABASE_USER`: `postgres.ysewoopjgdpvnkfhffgy`
@@ -450,7 +450,7 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
      **Environment** antes do primeiro deploy.
 5. Clique em **Apply**. O primeiro build leva alguns minutos; acompanhe em **Logs**. Na primeira
    inicialização o Flyway cria o baseline na versão 13, aplica V14 a V16 e o bootstrap de dados.
-6. Teste: `curl https://forwardservice-api.onrender.com/health` e depois o login com
+6. Teste: `curl https://forward-api-java.onrender.com/health` e depois o login com
    `gestor@forward.dev` / `Forward@2026`.
 
 Onde copiar a conexão do Supabase: **Supabase > Project Settings > Database > Connection string >

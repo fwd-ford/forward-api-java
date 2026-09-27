@@ -119,7 +119,7 @@ public class OpenApiConfig {
             .servers(
                 List.of(
                     new Server()
-                        .url("https://forwardservice-api.onrender.com")
+                        .url("https://forward-api-java.onrender.com")
                         .description("Produção (Render + Supabase)"),
                     new Server().url("http://localhost:8080").description("Local (perfil demo)")))
             .components(components)

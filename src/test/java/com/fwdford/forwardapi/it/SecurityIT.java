@@ -320,7 +320,7 @@ class SecurityIT extends IntegrationTest {
         .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
         .andExpect(
             jsonPath("$.servers[*].url")
-                .value(Matchers.hasItem("https://forwardservice-api.onrender.com")))
+                .value(Matchers.hasItem("https://forward-api-java.onrender.com")))
         .andExpect(jsonPath("$.paths['/api/v1/auth/login'].post.security").isEmpty());
     mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
   }
