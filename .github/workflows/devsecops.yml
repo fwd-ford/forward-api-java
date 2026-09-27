@@ -26,7 +26,7 @@ concurrency:
 jobs:
   devsecops:
     name: DevSecOps
-    uses: fwd-ford/.github/.github/workflows/devsecops.yml@main
+    uses: fwd-ford/.github/.github/workflows/devsecops.yml@ci/devsecops-maven-offline
     with:
       codeql-languages: '["java-kotlin","actions"]'
       semgrep-config: "p/default p/owasp-top-ten p/java p/dockerfile"
