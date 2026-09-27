@@ -440,7 +440,7 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
 3. Selecione o repositório **fwd-ford/forward-api-java** (branch `main`); o Render lê o
    `render.yaml` e mostra o serviço `forwardservice-api`.
 4. Preencha as variáveis marcadas como `sync: false`:
-   - `DATABASE_URL`: `jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require`
+   - `DATABASE_URL`: `jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require`
    - `DATABASE_USER`: `postgres.ysewoopjgdpvnkfhffgy`
    - `DATABASE_PASSWORD`: a senha do banco do projeto Supabase
    - `ADMIN_BOOTSTRAP_PASSWORD` (opcional): senha forte para criar `admin@forward.dev`. Deixe em
@@ -455,9 +455,9 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
 
 Onde copiar a conexão do Supabase: **Supabase > Project Settings > Database > Connection string >
 Session pooler** (ou botão **Connect** no topo do projeto). O painel mostra uma URI
-`postgresql://postgres.ysewoopjgdpvnkfhffgy:[YOUR-PASSWORD]@aws-0-sa-east-1.pooler.supabase.com:5432/postgres`;
+`postgresql://postgres.ysewoopjgdpvnkfhffgy:[YOUR-PASSWORD]@aws-1-sa-east-1.pooler.supabase.com:5432/postgres`;
 para o JDBC, prefixe `jdbc:`, tire usuário e senha da URL (eles vão em `DATABASE_USER` e
-`DATABASE_PASSWORD`) e acrescente `?sslmode=require`. Confira o host exibido no painel do projeto.
+`DATABASE_PASSWORD`) e acrescente `?sslmode=require`. Confira o host exibido no painel do projeto: este projeto está no pooler `aws-1-sa-east-1` (conferido em 27/09/2026; o `aws-0` responde "tenant not found").
 
 Notas importantes:
 
