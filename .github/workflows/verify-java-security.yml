@@ -1,0 +1,18 @@
+name: Verify java-security gate (temporary, do not merge)
+
+# Temporary check for fwd-ford/.github#11: runs the fixed java-security.yml from its
+# branch against this PR (dependency versions patched). The PR is closed afterwards.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    name: java-security (fix branch)
+    uses: fwd-ford/.github/.github/workflows/java-security.yml@ci/java-security-maven-cache
+    with:
+      java-version: "17"
