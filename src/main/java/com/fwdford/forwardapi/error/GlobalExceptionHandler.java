@@ -7,6 +7,7 @@
 package com.fwdford.forwardapi.error;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -47,6 +48,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final PropertyNamingStrategies.NamingBase SNAKE_CASE =
+      (PropertyNamingStrategies.NamingBase) PropertyNamingStrategies.SNAKE_CASE;
 
   /** Field-level validation error returned in the "errors" array. */
   public record FieldProblem(String field, String message) {}
@@ -95,7 +98,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       ConstraintViolationException ex, HttpServletRequest req) {
     List<FieldProblem> errors =
         ex.getConstraintViolations().stream()
-            .map(v -> new FieldProblem(lastNode(v.getPropertyPath().toString()), v.getMessage()))
+            .map(
+                v ->
+                    new FieldProblem(
+                        jsonName(lastNode(v.getPropertyPath().toString())), v.getMessage()))
             .collect(Collectors.toList());
     return problem(HttpStatus.BAD_REQUEST, validationProblem(errors, req));
   }
@@ -119,7 +125,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       WebRequest request) {
     List<FieldProblem> errors = new ArrayList<>();
     for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
-      errors.add(new FieldProblem(fe.getField(), fe.getDefaultMessage()));
+      errors.add(new FieldProblem(jsonName(fe.getField()), fe.getDefaultMessage()));
     }
     ex.getBindingResult()
         .getGlobalErrors()
@@ -309,6 +315,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   private static String jsonPath(List<JsonMappingException.Reference> path) {
     return path.stream()
         .map(r -> r.getFieldName() != null ? r.getFieldName() : "[" + r.getIndex() + "]")
+        .collect(Collectors.joining("."));
+  }
+
+  /** Java property path (e.g. serviceCode) to the snake_case name used on the wire. */
+  static String jsonName(String propertyPath) {
+    return java.util.Arrays.stream(propertyPath.split("\\."))
+        .map(SNAKE_CASE::translate)
         .collect(Collectors.joining("."));
   }
 

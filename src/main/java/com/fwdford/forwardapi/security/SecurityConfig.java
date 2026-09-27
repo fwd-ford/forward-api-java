@@ -5,8 +5,10 @@
 //   (CORS -> JwtAuthenticationFilter -> ExceptionTranslation -> AuthorizationFilter)
 //
 // Public endpoints are listed explicitly; everything else requires authentication.
-// Role checks and dealer scoping live in the service layer (@PreAuthorize + programmatic
-// checks), see docs/ARQUITETURA.md for the permission matrix.
+// Role rules exist at two levels (defense in depth): coarse URL rules here, so a profile
+// without permission gets 403 before any body validation, and @PreAuthorize on the
+// service methods. Dealer scoping is enforced programmatically in the services.
+// See docs/ARQUITETURA.md for the permission matrix.
 //
 // CSRF is disabled on purpose: CSRF abuses credentials the browser attaches
 // automatically (cookies, HTTP auth). This API keeps no session and no cookies; every
@@ -87,6 +89,14 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()
+                    .requestMatchers("/api/v1/users", "/api/v1/users/**")
+                    .hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/service-events/**")
+                    .hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/service-events")
+                    .hasAnyRole("GESTOR", "ADMIN", "SERVICE")
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/service-events/**")
+                    .hasAnyRole("GESTOR", "ADMIN", "SERVICE")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

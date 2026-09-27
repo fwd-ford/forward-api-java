@@ -70,6 +70,19 @@ public final class Validations {
     return Math.min(raw, max);
   }
 
+  // validateOffset: null means 0; negative values are rejected.
+  // validateOffset: nulo vira 0; negativo e rejeitado.
+  public static int validateOffset(Integer raw) {
+    if (raw == null) {
+      return 0;
+    }
+    if (raw < 0) {
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER", "Parâmetro offset deve ser um inteiro maior ou igual a zero.");
+    }
+    return raw;
+  }
+
   // validateEnum ensures the value is in the whitelist when not empty.
   // validateEnum: valida que o valor esta na whitelist quando nao vazio.
   public static String validateEnum(String name, String value, List<String> allowed) {

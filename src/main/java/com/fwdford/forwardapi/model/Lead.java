@@ -1,5 +1,7 @@
-// Lead DTO returned by /api/v1/leads.
-// DTO de lead retornado por /api/v1/leads.
+// Lead DTO returned by /api/v1/leads and /api/v1/leads/{id}. The first nine fields are
+// the stable contract consumed by the mobile app; the others come from joins (customer,
+// vehicle, dealer, churn score) and are omitted when null.
+// DTO de lead: campos base estaveis para o app e campos extras vindos de joins.
 package com.fwdford.forwardapi.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -8,60 +10,69 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(name = "Lead", description = "Sales lead generated for the dealer network.")
+@Schema(name = "Lead", description = "Oportunidade de retenção gerada a partir do score de churn.")
 public record Lead(
     @Schema(
-            description = "Lead UUID.",
-            example = "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+            description = "UUID do lead.",
+            example = "a1000000-0000-4000-8000-000000000001",
             format = "uuid")
         String id,
     @JsonProperty("customer_id")
         @Schema(
-            description = "Customer UUID this lead refers to.",
-            example = "2ddd2b47-9a80-4a0c-8c0a-8ee35d6f8b10",
+            description = "UUID do cliente.",
+            example = "11111111-1111-1111-1111-111111111001",
             format = "uuid")
         String customerId,
     @Schema(
-            description = "17-character VIN of the vehicle this lead refers to.",
-            example = "1HGCM82633A123456",
+            description = "VIN do veículo (17 caracteres).",
+            example = "9BFZZZ5SZJB000001",
             pattern = "^[A-HJ-NPR-Z0-9]{17}$")
         String vin,
     @JsonProperty("dealer_id")
         @Schema(
-            description = "Dealer UUID assigned to follow up.",
-            example = "11111111-1111-1111-1111-111111111111",
+            description = "UUID da concessionária responsável.",
+            example = "d0000000-0000-4000-8000-000000000001",
             format = "uuid")
         String dealerId,
     @Schema(
-            description = "Priority level inferred from churn score and segment.",
+            description = "Prioridade.",
             example = "high",
             allowableValues = {"low", "medium", "high", "critical"})
         String priority,
     @Schema(
-            description = "Lifecycle status of the lead.",
+            description = "Status no ciclo de vida.",
             example = "new",
             allowableValues = {"new", "assigned", "contacted", "converted", "lost", "expired"})
         String status,
-    @Schema(
-            description = "Why the lead was generated (free text or canonical code).",
-            example = "expected_churn>0.8")
+    @Schema(description = "Motivo da geração do lead.", example = "Revisão atrasada há 18 meses.")
         String reason,
     @JsonProperty("expected_value_brl")
-        @Schema(
-            description = "Expected revenue in BRL if this lead converts.",
-            example = "18500.00",
-            minimum = "0")
+        @Schema(description = "Receita esperada em BRL.", example = "1200.00", minimum = "0")
         Double expectedValueBrl,
-    @JsonProperty("created_at")
-        @Schema(
-            description = "Timestamp the lead was created.",
-            example = "2026-05-20T09:15:00-03:00",
-            format = "date-time")
+    @JsonProperty("created_at") @Schema(description = "Criação do lead.", format = "date-time")
         OffsetDateTime createdAt,
+    @JsonProperty("updated_at") @Schema(description = "Última alteração.", format = "date-time")
+        OffsetDateTime updatedAt,
     @JsonProperty("converted_at")
-        @Schema(
-            description = "Timestamp the lead became a sale (null when not converted yet).",
-            example = "2026-05-22T17:42:00-03:00",
-            format = "date-time",
-            nullable = true)
-        OffsetDateTime convertedAt) {}
+        @Schema(description = "Quando o lead virou venda (se convertido).", format = "date-time")
+        OffsetDateTime convertedAt,
+    @Schema(description = "Anotações do atendimento.", example = "Cliente pediu retorno amanhã.")
+        String notes,
+    @JsonProperty("customer_name")
+        @Schema(description = "Nome do cliente.", example = "João da Silva")
+        String customerName,
+    @JsonProperty("vehicle_model") @Schema(description = "Modelo do veículo.", example = "Ka")
+        String vehicleModel,
+    @JsonProperty("vehicle_year") @Schema(description = "Ano do veículo.", example = "2018")
+        Integer vehicleYear,
+    @JsonProperty("dealer_name")
+        @Schema(description = "Nome da concessionária.", example = "Ford Morumbi São Paulo")
+        String dealerName,
+    @JsonProperty("churn_probability")
+        @Schema(description = "Probabilidade de churn (0 a 1).", example = "0.78")
+        Double churnProbability,
+    @Schema(
+            description = "Segmento comportamental.",
+            example = "esquecido",
+            allowableValues = {"fiel", "abandono", "esquecido", "economico"})
+        String segment) {}
