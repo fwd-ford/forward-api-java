@@ -162,7 +162,12 @@ Supabase nunca exponha os hashes.
   seguro sobre o seed antigo do `forward-infra`: referencia concessionárias pelo código, usa
   `ON CONFLICT DO NOTHING` e só cria score de churn para clientes sem score atual. Garante 10
   concessionárias, 16 clientes com veículos e scores, 9 eventos de serviço, 22 leads (10 na F0001 e
-  7 na F0002) e os 4 usuários de demonstração.
+  7 na F0002) e os usuários de demonstração: GESTOR/ATENDENTE com `DEMO_USERS_PASSWORD` (padrão
+  `Forward@2026`, risco aceito: baixo privilégio e dados sintéticos) e o ADMIN somente quando
+  `ADMIN_BOOTSTRAP_PASSWORD` está definida (no perfil `prod` não há ADMIN com senha publicada; um
+  ADMIN antigo que ainda tenha a senha publicada é desativado ou recebe a senha configurada). As
+  senhas chegam ao SQL como placeholders do Flyway, com aspas escapadas, e não são registradas em
+  log.
 - `db/seed/R__seed_demo_data.sql` (somente `demo` e `test`) acrescenta `gestor2@forward.dev` e o
   usuário desativado `inativo@forward.dev`.
 - O cenário do Supabase é reproduzido no teste `ProdMigrationIT`: esquema criado sem histórico do

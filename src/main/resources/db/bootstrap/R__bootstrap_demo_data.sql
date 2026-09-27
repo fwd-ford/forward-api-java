@@ -8,9 +8,18 @@
 --     are only inserted when their foreign-key parents exist and churn scores are only added
 --     for customers without a current score.
 --
--- Demo users (password Forward@2026, hashed here with pgcrypto bcrypt, never stored in
--- plain text): admin@forward.dev (ADMIN), gestor@forward.dev (GESTOR, F0001),
--- atendente@forward.dev (ATENDENTE, F0001), atendente2@forward.dev (ATENDENTE, F0002).
+-- Users (passwords hashed here with pgcrypto bcrypt, never stored in plain text). The
+-- passwords come from Flyway placeholders (spring.flyway.placeholders, see application.yml):
+--   demo_users_password      (env DEMO_USERS_PASSWORD, default Forward@2026):
+--                            gestor@forward.dev (GESTOR, F0001), atendente@forward.dev
+--                            (ATENDENTE, F0001), atendente2@forward.dev (ATENDENTE, F0002).
+--                            Low privilege, synthetic data: accepted demo-environment risk.
+--   admin_bootstrap_password (env ADMIN_BOOTSTRAP_PASSWORD): admin@forward.dev (ADMIN). Blank
+--                            by default in the prod profile, so no administrator with a
+--                            published password is ever created there. demo/test set it to
+--                            Forward@2026.
+-- A blank placeholder skips the corresponding users. Existing users are never updated, except
+-- the remediation below for an ADMIN that still has the published default password.
 --
 -- Dados de bootstrap (perfis prod, demo e test): idempotentes, concessionarias por codigo.
 
@@ -172,17 +181,47 @@ WHERE EXISTS (SELECT 1 FROM customers c WHERE c.id = v.customer_id::uuid)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- Application users (bcrypt via pgcrypto; compatible with Spring's BCryptPasswordEncoder)
+-- Application users (bcrypt via pgcrypto; compatible with Spring's BCryptPasswordEncoder).
+-- Placeholder values are SQL-escaped by FlywayPlaceholderConfig (quotes doubled), so any
+-- password is safe inside the '...' literals below.
 -- ---------------------------------------------------------------------------
+
+-- Demo users (GESTOR/ATENDENTE): skipped when demo_users_password is blank.
 INSERT INTO app_users (id, email, password_hash, full_name, role, dealer_id, active)
-SELECT v.id::uuid, v.email, crypt('Forward@2026', gen_salt('bf', 10)), v.full_name, v.role, d.id, TRUE
+SELECT v.id::uuid, v.email, crypt(p.pw, gen_salt('bf', 10)), v.full_name, v.role, d.id, TRUE
 FROM (VALUES
-    ('ad000000-0000-4000-8000-000000000001', 'admin@forward.dev',      'Ana Paula Ribeiro', 'ADMIN',     NULL),
     ('ad000000-0000-4000-8000-000000000002', 'gestor@forward.dev',     'Gustavo Mendes',    'GESTOR',    'F0001'),
     ('ad000000-0000-4000-8000-000000000003', 'atendente@forward.dev',  'Beatriz Santos',    'ATENDENTE', 'F0001'),
     ('ad000000-0000-4000-8000-000000000004', 'atendente2@forward.dev', 'Diego Carvalho',    'ATENDENTE', 'F0002')
 ) AS v(id, email, full_name, role, dealer_code)
-LEFT JOIN dealers d ON d.code = v.dealer_code
-WHERE (v.dealer_code IS NULL OR d.id IS NOT NULL)
+JOIN dealers d ON d.code = v.dealer_code
+CROSS JOIN (SELECT '${demo_users_password}'::text AS pw) p
+WHERE p.pw <> ''
   AND NOT EXISTS (SELECT 1 FROM app_users u WHERE lower(u.email) = lower(v.email))
 ON CONFLICT DO NOTHING;
+
+-- ADMIN: created only when admin_bootstrap_password is set (never with a default password).
+INSERT INTO app_users (id, email, password_hash, full_name, role, dealer_id, active)
+SELECT 'ad000000-0000-4000-8000-000000000001'::uuid, 'admin@forward.dev',
+       crypt(p.pw, gen_salt('bf', 10)), 'Ana Paula Ribeiro', 'ADMIN', NULL, TRUE
+FROM (SELECT '${admin_bootstrap_password}'::text AS pw) p
+WHERE p.pw <> ''
+  AND NOT EXISTS (SELECT 1 FROM app_users u WHERE lower(u.email) = 'admin@forward.dev')
+ON CONFLICT DO NOTHING;
+
+-- Remediation (security review F-18): earlier versions of this script created
+-- admin@forward.dev with the published demo password. If that ADMIN still has it and the
+-- configured admin password is something else, rotate it to the configured password (and
+-- activate the account) or, when none is configured, deactivate the account. token_version
+-- is incremented so every session of the account is revoked. A password that is no longer
+-- the published default (changed by the admin or rotated here) is never touched.
+UPDATE app_users u
+   SET password_hash = CASE WHEN p.pw <> '' THEN crypt(p.pw, gen_salt('bf', 10))
+                            ELSE u.password_hash END,
+       active = (p.pw <> ''),
+       token_version = 1 + u.token_version
+  FROM (SELECT '${admin_bootstrap_password}'::text AS pw) p
+ WHERE lower(u.email) = 'admin@forward.dev'
+   AND u.role = 'ADMIN'
+   AND p.pw <> 'Forward@2026'
+   AND u.password_hash = crypt('Forward@2026', u.password_hash);

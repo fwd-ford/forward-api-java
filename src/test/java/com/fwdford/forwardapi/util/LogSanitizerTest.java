@@ -39,6 +39,21 @@ class LogSanitizerTest {
   }
 
   @Test
+  void vin_is_masked_except_the_last_six_characters() {
+    assertEquals("***********000001", LogSanitizer.maskVin("9BFZZZ5SZJB000001"));
+    assertFalse(LogSanitizer.maskVin("9BFZZZ5SZJB000001").contains("9BFZZZ"));
+  }
+
+  @Test
+  void mask_handles_short_values_null_and_control_characters() {
+    assertEquals("12345", LogSanitizer.mask("12345", 6));
+    assertEquals("**345", LogSanitizer.mask("12345", 3));
+    assertEquals("*****", LogSanitizer.mask("12345", 0));
+    assertEquals("null", LogSanitizer.mask(null, 6));
+    assertEquals("*********_forged", LogSanitizer.mask("AAAAAAAAA\nforged", 7));
+  }
+
+  @Test
   void null_is_rendered_explicitly() {
     assertEquals("null", LogSanitizer.sanitize(null));
   }

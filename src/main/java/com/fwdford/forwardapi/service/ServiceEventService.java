@@ -17,6 +17,7 @@ import com.fwdford.forwardapi.repository.DealerRepository;
 import com.fwdford.forwardapi.repository.ServiceEventRepository;
 import com.fwdford.forwardapi.repository.VehicleRepository;
 import com.fwdford.forwardapi.security.AuthenticatedUser;
+import com.fwdford.forwardapi.util.LogSanitizer;
 import com.fwdford.forwardapi.web.Validations;
 import com.fwdford.forwardapi.web.dto.ServiceEventRequest;
 import java.util.LinkedHashMap;
@@ -82,7 +83,11 @@ public class ServiceEventService {
             req.maintenanceNumber(),
             req.mainSource());
     audit.record(user, "service_event.created", "service_event", id.toString(), summary(r));
-    log.info("service_event_created id={} vin={} dealer_id={}", id, r.vin(), r.dealerId());
+    log.info(
+        "service_event_created id={} vin={} dealer_id={}",
+        id,
+        LogSanitizer.maskVin(r.vin()),
+        r.dealerId());
     return load(id);
   }
 

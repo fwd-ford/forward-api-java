@@ -20,7 +20,7 @@ API REST e SOAP do **ForwardService**, plataforma de retenção de clientes da r
 - **REST nível 2**: recursos, verbos HTTP corretos (GET, POST, PUT, PATCH, DELETE), status
   coerentes (200, 201 + `Location`, 204, 400, 401, 403, 404, 405, 409, 415, 422, 429).
 - **Erros padronizados** em RFC 7807 (`application/problem+json`) com mensagens em pt-BR.
-- **217 testes automatizados** (119 unitários e 98 de integração contra PostgreSQL real
+- **220 testes automatizados** (121 unitários e 99 de integração contra PostgreSQL real
   embarcado), cobertura de linhas em torno de 92% (JaCoCo).
 
 ## Sumário
@@ -56,7 +56,7 @@ sistemas SOAP. Detalhes, fluxo de autenticação, cadeia de filtros e decisões 
 
 | Tema | Tecnologia |
 |---|---|
-| Linguagem e framework | Java 17, Spring Boot 3.5.14 (Web, Security, Validation, JDBC, Web Services, Actuator) |
+| Linguagem e framework | Java 17, Spring Boot 3.5.16 com Tomcat 10.1.60 (Web, Security, Validation, JDBC, Web Services, Actuator) |
 | Banco | PostgreSQL (Supabase em produção); Flyway V1 a V16 + bootstrap; PostgreSQL 16 embarcado (Zonky) nos perfis `demo` e `test` |
 | Acesso a dados | `NamedParameterJdbcTemplate` com SQL parametrizado (sem ORM) |
 | Autenticação | JWT HS256 emitido pela própria API (JJWT 0.12), senhas BCrypt |
@@ -128,6 +128,8 @@ Modelo completo em [`.env.example`](.env.example).
 | `JWT_SECRET` | (vazio) | Chave HS256, mínimo 32 bytes. No Render é gerada automaticamente. |
 | `JWT_EXPIRATION_MINUTES` | `60` | Validade do token (1 a 1440). |
 | `JWT_USER_STATE_CACHE_TTL` | `30s` | Cache do estado do usuário usado na revogação de tokens (`0s` desliga). |
+| `ADMIN_BOOTSTRAP_PASSWORD` | (vazio; `Forward@2026` no perfil demo) | Cria `admin@forward.dev` (perfis prod/demo) somente quando definida. Nunca é registrada em log. |
+| `DEMO_USERS_PASSWORD` | `Forward@2026` | Senha dos usuários de demonstração GESTOR/ATENDENTE criados pelo bootstrap; vazio = não cria. Alterar depois não muda usuários existentes. |
 | `DATABASE_URL` | `jdbc:postgresql://localhost:55432/forward?sslmode=disable` | JDBC do PostgreSQL (ignorado no perfil demo). |
 | `DATABASE_USER`, `DATABASE_PASSWORD` | `forward`, `forward_dev` | Credenciais do banco. |
 | `DATABASE_POOL_SIZE` | `10` (`5` no perfil prod) | Conexões do HikariCP. |
@@ -140,22 +142,31 @@ Modelo completo em [`.env.example`](.env.example).
 
 ## Usuários de demonstração
 
-**Senha de todos: `Forward@2026`** (gravada somente como hash BCrypt, calculado no banco com
-pgcrypto; nenhum hash é versionado).
+Senhas gravadas somente como hash BCrypt, calculado no banco com pgcrypto (nenhum hash é
+versionado). No perfil `demo` e nos testes, **todos usam `Forward@2026`**.
 
-| E-mail | Perfil | Concessionária | Onde existe |
+| E-mail | Perfil | Concessionária | Onde existe e senha |
 |---|---|---|---|
-| `admin@forward.dev` | ADMIN | todas | produção (Render), demo e testes |
-| `gestor@forward.dev` | GESTOR | F0001 Ford Morumbi São Paulo | produção, demo e testes |
-| `atendente@forward.dev` | ATENDENTE | F0001 Ford Morumbi São Paulo | produção, demo e testes |
-| `atendente2@forward.dev` | ATENDENTE | F0002 Ford Barra Rio | produção, demo e testes |
+| `admin@forward.dev` | ADMIN | todas | demo e testes (`Forward@2026`); em produção **só se `ADMIN_BOOTSTRAP_PASSWORD` estiver definida**, com essa senha |
+| `gestor@forward.dev` | GESTOR | F0001 Ford Morumbi São Paulo | produção (`DEMO_USERS_PASSWORD`, padrão `Forward@2026`), demo e testes |
+| `atendente@forward.dev` | ATENDENTE | F0001 Ford Morumbi São Paulo | produção (`DEMO_USERS_PASSWORD`), demo e testes |
+| `atendente2@forward.dev` | ATENDENTE | F0002 Ford Barra Rio | produção (`DEMO_USERS_PASSWORD`), demo e testes |
 | `gestor2@forward.dev` | GESTOR | F0002 Ford Barra Rio | demo e testes |
 | `inativo@forward.dev` | ATENDENTE (desativado) | F0001 | demo e testes (login: 401 `AUTH_USER_DISABLED`) |
 
 O bootstrap ([`db/bootstrap`](src/main/resources/db/bootstrap/R__bootstrap_demo_data.sql)) também
 garante 10 concessionárias, 16 clientes com veículos e scores de churn, 9 eventos de serviço e
 22 leads (10 na F0001 e 7 na F0002) com todos os status e prioridades. Ele referencia as
-concessionárias pelo código e usa `ON CONFLICT DO NOTHING`, então nunca altera dados existentes.
+concessionárias pelo código e usa `ON CONFLICT DO NOTHING`, então nunca altera dados existentes
+(nem senhas de usuários que já existem).
+
+**Risco aceito no ambiente de demonstração:** os usuários GESTOR/ATENDENTE de produção usam por
+padrão a senha publicada `Forward@2026`, porque os professores e o botão "Usar usuário de teste" do
+app dependem dela. São perfis de baixo privilégio, restritos à própria concessionária, sobre dados
+sintéticos. Para fechar o risco, defina outra `DEMO_USERS_PASSWORD` antes do primeiro deploy (ou
+vazio para não criar esses usuários). O ADMIN nunca é criado com senha publicada em produção: sem
+`ADMIN_BOOTSTRAP_PASSWORD` ele não existe, e um `admin@forward.dev` antigo que ainda tenha a senha
+publicada é desativado (ou recebe a senha configurada) na próxima inicialização.
 
 ## Autenticação passo a passo
 
@@ -352,24 +363,25 @@ Erros de validação trazem também `errors: [{"field": "status", "message": "..
 ## Testes
 
 ```bash
-./mvnw test                                      # 217 testes (unitários + integração)
+./mvnw test                                      # 220 testes (unitários + integração)
 ./mvnw verify                                    # + JaCoCo e relatório HTML do Surefire
 ./mvnw spotless:check && ./mvnw verify -P quality  # mesmas verificações do CI
 ```
 
-- **Unitários (119)**: `JwtServiceTest` (emissão, expiração, tolerância, adulteração, `iss`/`aud`,
+- **Unitários (121)**: `JwtServiceTest` (emissão, expiração, tolerância, adulteração, `iss`/`aud`,
   `alg=none`, `token_version`, segredo obrigatório em produção), `JwtAuthenticationFilterTest`
   (revogação por usuário excluído, inativo, perfil, concessionária e versão), `UserStateCacheTest`
   (TTL do cache), `LogSanitizerTest`, `SecureXmlTest` (DOCTYPE/XXE recusados), regras de serviço
   com Mockito e validações.
-- **Integração (98)**: `@SpringBootTest` + MockMvc contra PostgreSQL 16 embarcado com migrations,
+- **Integração (99)**: `@SpringBootTest` + MockMvc contra PostgreSQL 16 embarcado com migrations,
   bootstrap e seed. `AuthIT`, `SecurityIT` (401/403 por perfil e por concessionária, CORS,
   headers), `TokenRevocationIT` (token antigo recusado logo após desativar, rebaixar, trocar de
   concessionária, redefinir senha ou excluir o usuário), `LeadIT`, `ServiceEventIT`, `UserIT`,
   `ErrorHandlingIT`, `HttpServerIT` (Tomcat real:
   SOAP, WSDL, XXE, Swagger) e `ProdMigrationIT` (reproduz o banco do Supabase: esquema do
   forward-infra sem histórico do Flyway + seed antigo, e valida baseline 13, V14+, bootstrap
-  idempotente e dados antigos intactos). Testes que alteram dados fazem rollback ao final.
+  idempotente, dados antigos intactos, ADMIN criado só com `ADMIN_BOOTSTRAP_PASSWORD` e remediação
+  de um ADMIN antigo com a senha publicada). Testes que alteram dados fazem rollback ao final.
 - Relatórios: `target/site/jacoco/index.html` (cobertura) e `target/reports/surefire.html`.
 - Evidências desta entrega em [`docs/evidencias/`](docs/evidencias/): resumo da execução
   (`testes-2026-09-27.txt`), cobertura por pacote (`jacoco-resumo.md`), relatório HTML do Surefire
@@ -427,10 +439,15 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
 2. No painel, **New** > **Blueprint**.
 3. Selecione o repositório **fwd-ford/forward-api-java** (branch `main`); o Render lê o
    `render.yaml` e mostra o serviço `forwardservice-api`.
-4. Preencha as três variáveis marcadas como `sync: false`:
+4. Preencha as variáveis marcadas como `sync: false`:
    - `DATABASE_URL`: `jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require`
    - `DATABASE_USER`: `postgres.ysewoopjgdpvnkfhffgy`
    - `DATABASE_PASSWORD`: a senha do banco do projeto Supabase
+   - `ADMIN_BOOTSTRAP_PASSWORD` (opcional): senha forte para criar `admin@forward.dev`. Deixe em
+     branco para não criar nenhum ADMIN. Guarde-a num cofre de senhas; ela não aparece em logs.
+   - `DEMO_USERS_PASSWORD` não faz parte do Blueprint: sem ela, os usuários de teste
+     GESTOR/ATENDENTE usam `Forward@2026`. Para trocar a senha publicada, adicione a variável em
+     **Environment** antes do primeiro deploy.
 5. Clique em **Apply**. O primeiro build leva alguns minutos; acompanhe em **Logs**. Na primeira
    inicialização o Flyway cria o baseline na versão 13, aplica V14 a V16 e o bootstrap de dados.
 6. Teste: `curl https://forwardservice-api.onrender.com/health` e depois o login com
