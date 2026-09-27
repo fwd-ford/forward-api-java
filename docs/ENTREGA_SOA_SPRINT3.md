@@ -8,6 +8,7 @@
 | Lucca Saraiva Borges | 554608 |
 | Ruan Melo Vieira | 557599 |
 | Rodrigo César Jimenez | 558148 |
+| Bruno Leão | 555563 |
 
 ## Links da entrega
 
