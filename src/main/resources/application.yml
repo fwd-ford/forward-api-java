@@ -86,6 +86,9 @@ forward:
     audience: forward-app
     clock-skew-seconds: 30
   internal-api-key: ${INTERNAL_API_KEY:}
+  # Header set by a trusted reverse proxy with the real client IP (Fly.io: Fly-Client-IP).
+  # Empty = use the socket address. Never point this at a header clients can forge.
+  trusted-client-ip-header: ${TRUSTED_CLIENT_IP_HEADER:}
   max-body-bytes: ${MAX_BODY_BYTES:1048576}
   # Log format consumed by logback-spring.xml: JSON or CONSOLE.
   # LOG_FORMAT wins; otherwise ENV=production switches to JSON.

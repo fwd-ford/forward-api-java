@@ -1,15 +1,13 @@
-// Customer service. Sprint 1 relaxes RBAC: any authenticated caller can read
-// any customer record. The mobile app needs broad read access for the Lead
-// Detail flow (customer name, phone for tel: action). Sprint 2 will tighten
-// to dealer-scoped access via the leads table.
-// Service de customer: no Sprint 1 qualquer caller autenticado le qualquer
-// customer (necessario pro app mobile na tela Lead Detail). Sprint 2
-// restringe por dealer via tabela de leads.
+// Customer service. Dealer-scoped: ATENDENTE and GESTOR only read customers linked to
+// their dealer (vehicle serviced there or lead owned by it); ADMIN and SERVICE read all.
+// Unknown id -> 404 CUSTOMER_NOT_FOUND; other dealer's customer -> 403 ACCESS_OTHER_DEALER.
+// Service de clientes com escopo por concessionaria.
 package com.fwdford.forwardapi.service;
 
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.Customer;
 import com.fwdford.forwardapi.repository.CustomerRepository;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,10 +19,20 @@ public class CustomerService {
     this.repo = repo;
   }
 
-  public Customer get(String id, String callerSub, String callerRole) {
-    if (callerSub == null || callerSub.isBlank()) {
-      throw ApiException.forbidden();
+  public Customer get(String id, AuthenticatedUser user) {
+    Customer customer =
+        repo.findById(id)
+            .orElseThrow(
+                () -> ApiException.notFound("CUSTOMER_NOT_FOUND", "Cliente não encontrado."));
+    requireAccess(id, user);
+    return customer;
+  }
+
+  /** Throws 403 ACCESS_OTHER_DEALER when a dealer-scoped user asks for another dealer's data. */
+  void requireAccess(String customerId, AuthenticatedUser user) {
+    if (user.role().dealerScoped()
+        && (user.dealerId() == null || !repo.isLinkedToDealer(customerId, user.dealerId()))) {
+      throw ApiException.forbiddenOtherDealer();
     }
-    return repo.findById(id).orElseThrow(() -> ApiException.notFound("customer"));
   }
 }

@@ -4,6 +4,7 @@ package com.fwdford.forwardapi.web;
 
 import com.fwdford.forwardapi.model.Lead;
 import com.fwdford.forwardapi.model.LeadFilter;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
 import com.fwdford.forwardapi.service.LeadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -87,7 +89,8 @@ public class LeadController {
               schema = @Schema(type = "integer", minimum = "1", maximum = "200"),
               example = "50")
           @RequestParam(name = "limit", required = false)
-          Integer limit) {
+          Integer limit,
+      @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser user) {
 
     String validDealer = "";
     if (dealerId != null && !dealerId.isEmpty()) {
@@ -96,6 +99,6 @@ public class LeadController {
     String validStatus = Validations.validateEnum("status", status, STATUSES);
     int validLimit = Validations.validateLimit(limit, 50, 200);
 
-    return service.list(new LeadFilter(validDealer, validStatus, validLimit));
+    return service.list(new LeadFilter(validDealer, validStatus, validLimit), user);
   }
 }

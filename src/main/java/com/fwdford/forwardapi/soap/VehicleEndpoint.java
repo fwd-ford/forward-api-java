@@ -5,6 +5,7 @@ package com.fwdford.forwardapi.soap;
 
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.Vehicle;
+import com.fwdford.forwardapi.security.CurrentUser;
 import com.fwdford.forwardapi.service.VehicleService;
 import com.fwdford.forwardapi.web.Validations;
 import javax.xml.transform.dom.DOMResult;
@@ -42,7 +43,7 @@ public class VehicleEndpoint {
 
     Vehicle v;
     try {
-      v = service.get(vin);
+      v = service.get(vin, CurrentUser.require());
     } catch (ApiException ex) {
       throw new SoapClientFault(ex.detail());
     }

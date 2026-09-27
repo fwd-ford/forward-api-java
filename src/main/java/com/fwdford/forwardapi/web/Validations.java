@@ -20,7 +20,8 @@ public final class Validations {
   public static String validateUuid(String name, String value) {
     String v = value == null ? "" : value.trim();
     if (!UUID_RE.matcher(v).matches()) {
-      throw ApiException.badRequest("Parametro " + name + " deve ser um UUID valido.");
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER", "Parâmetro " + name + " deve ser um UUID válido.");
     }
     return v;
   }
@@ -30,7 +31,8 @@ public final class Validations {
   public static String validateVin(String value) {
     String v = value == null ? "" : value.trim().toUpperCase();
     if (!VIN_RE.matcher(v).matches()) {
-      throw ApiException.badRequest("VIN deve ter 17 caracteres validos (sem I, O ou Q).");
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER", "VIN deve ter 17 caracteres válidos (sem I, O ou Q).");
     }
     return v;
   }
@@ -45,10 +47,12 @@ public final class Validations {
     try {
       n = Integer.parseInt(raw.trim());
     } catch (NumberFormatException ex) {
-      throw ApiException.badRequest("Parametro limit deve ser inteiro positivo.");
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER", "Parâmetro limit deve ser um inteiro positivo.");
     }
     if (n < 1) {
-      throw ApiException.badRequest("Parametro limit deve ser inteiro positivo.");
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER", "Parâmetro limit deve ser um inteiro positivo.");
     }
     return Math.min(n, max);
   }
@@ -60,7 +64,8 @@ public final class Validations {
       return defaultValue;
     }
     if (raw < 1) {
-      throw ApiException.badRequest("Parametro limit deve ser inteiro positivo.");
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER", "Parâmetro limit deve ser um inteiro positivo.");
     }
     return Math.min(raw, max);
   }
@@ -72,7 +77,9 @@ public final class Validations {
       return "";
     }
     if (!allowed.contains(value)) {
-      throw ApiException.badRequest("Valor invalido para " + name + ".");
+      throw ApiException.badRequest(
+          "INVALID_PARAMETER",
+          "Valor inválido para " + name + ". Aceitos: " + String.join(", ", allowed) + ".");
     }
     return value;
   }

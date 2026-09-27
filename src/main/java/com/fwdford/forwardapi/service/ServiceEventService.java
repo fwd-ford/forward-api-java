@@ -10,12 +10,14 @@ import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.ServiceEvent;
 import com.fwdford.forwardapi.repository.ServiceEventRepository;
 import com.fwdford.forwardapi.repository.VehicleRepository;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
 import com.fwdford.forwardapi.web.CreateServiceEventRequest;
 import com.fwdford.forwardapi.web.Validations;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -39,7 +41,8 @@ public class ServiceEventService {
     this.vehicleRepo = vehicleRepo;
   }
 
-  public ServiceEvent create(CreateServiceEventRequest req) {
+  @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN', 'SERVICE')")
+  public ServiceEvent create(CreateServiceEventRequest req, AuthenticatedUser user) {
     String vin = Validations.validateVin(req.vin());
 
     String orderType = SERVICE_CODE_TO_ORDER_TYPE.get(req.serviceCode());
@@ -51,7 +54,8 @@ public class ServiceEventService {
 
     if (vehicleRepo.findByVin(vin).isEmpty()) {
       log.warn("service_event_rejected reason=vin_not_found vin={}", vin);
-      throw ApiException.notFound("vehicle");
+      throw ApiException.unprocessable(
+          "REFERENCED_VEHICLE_NOT_FOUND", "O veículo informado (vin) não existe.");
     }
 
     UUID dealerId =
@@ -61,8 +65,13 @@ public class ServiceEventService {
                   log.warn(
                       "service_event_rejected reason=dealer_not_found dealer_code={}",
                       req.dealerCode());
-                  return ApiException.notFound("dealer");
+                  return ApiException.unprocessable(
+                      "REFERENCED_DEALER_NOT_FOUND",
+                      "A concessionária informada (dealer_code) não existe ou está inativa.");
                 });
+    if (!user.canAccessDealer(dealerId.toString())) {
+      throw ApiException.forbiddenOtherDealer();
+    }
 
     ServiceEvent created =
         repo.insert(

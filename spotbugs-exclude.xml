@@ -24,6 +24,16 @@
         <Bug pattern="SPRING_CSRF_PROTECTION_DISABLED"/>
     </Match>
 
+    <!--
+      /error must answer every HTTP method (the servlet container forwards the original method on
+      error dispatch). The API is stateless and never uses cookies, so there is no CSRF surface;
+      see SecurityConfig for the authentication model.
+    -->
+    <Match>
+        <Class name="com.fwdford.forwardapi.error.ProblemErrorController"/>
+        <Bug pattern="SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING"/>
+    </Match>
+
     <!-- Spring @Configuration beans may throw during init - false positive on framework pattern. -->
     <Match>
         <Class name="com.fwdford.forwardapi.soap.WebServiceConfig"/>

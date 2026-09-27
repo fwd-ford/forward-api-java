@@ -6,8 +6,10 @@
 package com.fwdford.forwardapi.web;
 
 import com.fwdford.forwardapi.model.ServiceEvent;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
 import com.fwdford.forwardapi.service.ServiceEventService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,6 +20,7 @@ import java.net.URI;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -72,8 +75,10 @@ public class ServiceEventController {
         description = "Rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
   })
-  public ResponseEntity<ServiceEvent> create(@Valid @RequestBody CreateServiceEventRequest req) {
-    ServiceEvent created = service.create(req);
+  public ResponseEntity<ServiceEvent> create(
+      @Valid @RequestBody CreateServiceEventRequest req,
+      @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser user) {
+    ServiceEvent created = service.create(req, user);
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")

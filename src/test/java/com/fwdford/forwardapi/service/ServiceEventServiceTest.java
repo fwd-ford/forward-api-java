@@ -15,6 +15,8 @@ import com.fwdford.forwardapi.model.ServiceEvent;
 import com.fwdford.forwardapi.model.Vehicle;
 import com.fwdford.forwardapi.repository.ServiceEventRepository;
 import com.fwdford.forwardapi.repository.VehicleRepository;
+import com.fwdford.forwardapi.security.AuthenticatedUser;
+import com.fwdford.forwardapi.security.Role;
 import com.fwdford.forwardapi.web.CreateServiceEventRequest;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -29,6 +31,9 @@ class ServiceEventServiceTest {
   private static final String VIN = "9BFZZZ5SZJB000001";
   private static final String DEALER_CODE = "F0001";
   private static final OffsetDateTime SERVICE_DATE = OffsetDateTime.parse("2026-05-23T10:00:00Z");
+  private static final AuthenticatedUser ADMIN =
+      new AuthenticatedUser(
+          "ad000000-0000-4000-8000-000000000001", "admin@forward.dev", "Admin", Role.ADMIN, null);
 
   private ServiceEventRepository repo;
   private VehicleRepository vehicleRepo;
@@ -45,7 +50,8 @@ class ServiceEventServiceTest {
   void happy_path_creates_service_event() {
     UUID dealerId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     Vehicle vehicle =
-        new Vehicle(VIN, "cust-1", "Ka", 2018, "SE 1.0", "Prata", false, LocalDate.now(), null);
+        new Vehicle(
+            VIN, "cust-1", null, "Ka", 2018, "SE 1.0", "Prata", false, LocalDate.now(), null);
     ServiceEvent expected =
         new ServiceEvent(
             "11111111-1111-1111-1111-111111111111",
@@ -72,7 +78,7 @@ class ServiceEventServiceTest {
 
     CreateServiceEventRequest req =
         new CreateServiceEventRequest(VIN, DEALER_CODE, 1, 3, 50000, SERVICE_DATE, "dealer_app");
-    ServiceEvent actual = service.create(req);
+    ServiceEvent actual = service.create(req, ADMIN);
 
     assertEquals(expected, actual);
   }
@@ -83,9 +89,9 @@ class ServiceEventServiceTest {
 
     CreateServiceEventRequest req =
         new CreateServiceEventRequest(VIN, DEALER_CODE, 1, 3, 50000, SERVICE_DATE, "dealer_app");
-    ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
+    ApiException ex = assertThrows(ApiException.class, () -> service.create(req, ADMIN));
 
-    assertEquals("not_found", ex.code());
+    assertEquals("REFERENCED_VEHICLE_NOT_FOUND", ex.code());
     verify(repo, never())
         .insert(anyString(), any(), anyString(), any(), any(), anyInt(), anyString());
   }
@@ -95,9 +101,9 @@ class ServiceEventServiceTest {
     CreateServiceEventRequest req =
         new CreateServiceEventRequest(
             "SHORT", DEALER_CODE, 1, 3, 50000, SERVICE_DATE, "dealer_app");
-    ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
+    ApiException ex = assertThrows(ApiException.class, () -> service.create(req, ADMIN));
 
-    assertEquals("bad_request", ex.code());
+    assertEquals("INVALID_PARAMETER", ex.code());
     verify(vehicleRepo, never()).findByVin(anyString());
     verify(repo, never()).findDealerIdByCode(anyString());
   }
@@ -107,7 +113,7 @@ class ServiceEventServiceTest {
     CreateServiceEventRequest req =
         new CreateServiceEventRequest(VIN, DEALER_CODE, 99, 3, 50000, SERVICE_DATE, "dealer_app");
 
-    assertThrows(IllegalStateException.class, () -> service.create(req));
+    assertThrows(IllegalStateException.class, () -> service.create(req, ADMIN));
 
     verify(vehicleRepo, never()).findByVin(anyString());
     verify(repo, never()).findDealerIdByCode(anyString());
@@ -116,15 +122,16 @@ class ServiceEventServiceTest {
   @Test
   void missing_dealer_yields_not_found() {
     Vehicle vehicle =
-        new Vehicle(VIN, "cust-1", "Ka", 2018, "SE 1.0", "Prata", false, LocalDate.now(), null);
+        new Vehicle(
+            VIN, "cust-1", null, "Ka", 2018, "SE 1.0", "Prata", false, LocalDate.now(), null);
     when(vehicleRepo.findByVin(VIN)).thenReturn(Optional.of(vehicle));
     when(repo.findDealerIdByCode(anyString())).thenReturn(Optional.empty());
 
     CreateServiceEventRequest req =
         new CreateServiceEventRequest(VIN, "F9999", 1, 3, 50000, SERVICE_DATE, "dealer_app");
-    ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
+    ApiException ex = assertThrows(ApiException.class, () -> service.create(req, ADMIN));
 
-    assertEquals("not_found", ex.code());
+    assertEquals("REFERENCED_DEALER_NOT_FOUND", ex.code());
     verify(repo, never())
         .insert(anyString(), any(), anyString(), any(), any(), anyInt(), anyString());
   }
