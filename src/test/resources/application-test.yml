@@ -1,0 +1,26 @@
+# Test profile: embedded PostgreSQL + migrations + seed (see EmbeddedPostgresConfig).
+# The JWT key below is a test fixture only; it never reaches any deployed environment.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+
+forward:
+  env: test
+  allowed-origins: http://localhost:3000,http://localhost:8081
+  rate-limit:
+    max: 100000
+    window: 1m
+    login-max: 5
+    login-window: 1m
+  jwt:
+    secret: fixture-test-only-jwt-secret-0123456789abcdef
+    expiration-minutes: 60
+  internal-api-key: fixture-test-internal-api-key
+  log-format: CONSOLE
+  embedded-db:
+    pool-size: 10
+
+logging:
+  level:
+    root: WARN
+    com.fwdford.forwardapi: INFO

@@ -1,0 +1,16 @@
+# Demo profile: embedded PostgreSQL 16 (Zonky, no Docker), migrations + demo seed.
+# If JWT_SECRET is not set (and ENV is not production) an ephemeral random key is
+# generated at boot and a WARN is logged: tokens stop working after a restart.
+# Perfil demo: Postgres embarcado + migrations + seed. Sem dependencias externas.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+
+forward:
+  embedded-db:
+    pool-size: 5
+  # JSON logs on the demo deployment; LOG_FORMAT=CONSOLE gives readable local logs.
+  log-format: ${LOG_FORMAT:JSON}

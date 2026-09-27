@@ -1,0 +1,6 @@
+# Seed profile: loads the demo seed into an EXTERNAL PostgreSQL (DATABASE_URL).
+# Use it only with an empty database dedicated to this API (never in production).
+# Perfil seed: aplica o seed de demo num Postgres externo vazio.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
