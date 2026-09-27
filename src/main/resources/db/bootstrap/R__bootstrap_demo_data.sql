@@ -4,8 +4,9 @@
 --   * empty database (embedded PostgreSQL in demo/test): creates everything below;
 --   * production (Supabase) whose schema came from forward-infra 001-013 and which already
 --     holds the original forward-infra seed: existing rows are never touched. Dealers are
---     referenced by their code (never by id), every insert is ON CONFLICT DO NOTHING and
---     churn scores are only added for customers without a current score.
+--     referenced by their code (never by id), every insert is ON CONFLICT DO NOTHING, rows
+--     are only inserted when their foreign-key parents exist and churn scores are only added
+--     for customers without a current score.
 --
 -- Demo users (password Forward@2026, hashed here with pgcrypto bcrypt, never stored in
 -- plain text): admin@forward.dev (ADMIN), gestor@forward.dev (GESTOR, F0001),
@@ -78,6 +79,7 @@ FROM (VALUES
     ('9BFZZZ5SZJB000016', '11111111-1111-1111-1111-111111111016', 'F0002', 'Maverick',     2024, 'XLT Hybrid',      'Cinza',    'FWD1A16', FALSE, '2024-05-10', '2025-05-12 11:00:00-03')
 ) AS v(vin, customer_id, dealer_code, model, year, version, color, plate, discontinued, purchase_date, last_service_at)
 JOIN dealers d ON d.code = v.dealer_code
+WHERE EXISTS (SELECT 1 FROM customers c WHERE c.id = v.customer_id::uuid)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
@@ -98,6 +100,7 @@ FROM (VALUES
     ('5e000000-0000-4000-8000-000000000009', '9BFZZZ5SZJB000009', 'F0002', 'paid_repair',           'completed', '2021-10-05 10:00:00-03', '2021-10-05 10:40:00-03', 52000, 1780.00, 0, 'legacy')
 ) AS v(id, vin, dealer_code, order_type, status, scheduled_at, completed_at, mileage_km, amount, maintenance_number, main_source)
 JOIN dealers d ON d.code = v.dealer_code
+WHERE EXISTS (SELECT 1 FROM vehicles ve WHERE ve.vin = v.vin)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
@@ -124,6 +127,7 @@ FROM (VALUES
     ('5c000000-0000-4000-8000-000000000016', '11111111-1111-1111-1111-111111111016', '9BFZZZ5SZJB000016', 'economico', 0.52, 0.78)
 ) AS v(id, customer_id, vin, segment, probability, confidence)
 WHERE EXISTS (SELECT 1 FROM vehicles ve WHERE ve.vin = v.vin)
+  AND EXISTS (SELECT 1 FROM customers c WHERE c.id = v.customer_id::uuid)
   AND NOT EXISTS (SELECT 1 FROM churn_scores cs WHERE cs.customer_id = v.customer_id::uuid AND cs.is_current)
 ON CONFLICT DO NOTHING;
 
