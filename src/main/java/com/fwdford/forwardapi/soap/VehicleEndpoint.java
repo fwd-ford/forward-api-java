@@ -9,8 +9,8 @@ import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.model.Vehicle;
 import com.fwdford.forwardapi.security.CurrentUser;
 import com.fwdford.forwardapi.service.VehicleService;
+import com.fwdford.forwardapi.util.SecureXml;
 import com.fwdford.forwardapi.web.Validations;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
@@ -48,9 +48,8 @@ public class VehicleEndpoint {
       throw new SoapClientFault(ex.detail());
     }
 
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-    factory.setNamespaceAware(true);
-    Document doc = factory.newDocumentBuilder().newDocument();
+    // Hardened factory (no DOCTYPE, no external entities) even though it only builds output.
+    Document doc = SecureXml.documentBuilderFactory().newDocumentBuilder().newDocument();
     Element response = doc.createElementNS(NS, "GetVehicleResponse");
     doc.appendChild(response);
     appendChild(doc, response, "VIN", v.vin());

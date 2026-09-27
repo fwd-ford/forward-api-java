@@ -92,6 +92,30 @@ class HttpServerIT {
   }
 
   @Test
+  @DisplayName("SOAP com DOCTYPE (XXE) é recusado e a entidade não é expandida")
+  void soap_with_doctype_is_rejected() {
+    // If the entity were expanded the VIN would be valid and the call would return the vehicle.
+    String xxe =
+        """
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE soapenv:Envelope [<!ENTITY vin "9BFZZZ5SZJB000001">]>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:v="urn:forwardservice:vehicles">
+  <soapenv:Body><v:GetVehicleRequest><v:VIN>&vin;</v:VIN></v:GetVehicleRequest></soapenv:Body>
+</soapenv:Envelope>
+""";
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.TEXT_XML);
+    headers.setBearerAuth(adminToken());
+    ResponseEntity<String> resp =
+        http.exchange(
+            "/soap/vehicles", HttpMethod.POST, new HttpEntity<>(xxe, headers), String.class);
+
+    assertThat(resp.getStatusCode().is2xxSuccessful()).isFalse();
+    assertThat(resp.getBody()).doesNotContain("GetVehicleResponse").doesNotContain("<Model>");
+  }
+
+  @Test
   @DisplayName("health, OpenAPI e Swagger UI respondem sem token em HTTP real")
   void public_endpoints_over_http() {
     assertThat(http.getForEntity("/health", String.class).getStatusCode().value()).isEqualTo(200);

@@ -1,8 +1,12 @@
 // Rate limiter keyed by client IP. Runs BEFORE the Spring Security chain so floods of
 // unauthenticated or invalid-token requests are throttled too. Two Bucket4j buckets:
-//   - global: RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW for every path;
+//   - global: RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW, applied to every request;
 //   - login:  LOGIN_RATE_LIMIT_MAX attempts per LOGIN_RATE_LIMIT_WINDOW on
-//             POST /api/v1/auth/login (brute-force protection).
+//             POST /api/v1/auth/login (brute-force protection), on top of the global one.
+// The login endpoint is recognized by a Spring Security request matcher (normalized path
+// and method), never by comparing raw request strings. The client IP is the servlet
+// container's remote address (behind a proxy, set from X-Forwarded-For only for trusted
+// proxies by server.forward-headers-strategy=native).
 // In-memory buckets: for multi-instance deployments migrate to a shared store (Redis).
 // Rate limit por IP antes da autenticacao, com balde mais restrito para o login.
 package com.fwdford.forwardapi.security;
@@ -11,6 +15,7 @@ import com.fwdford.forwardapi.config.AppProperties;
 import com.fwdford.forwardapi.error.ApiException;
 import com.fwdford.forwardapi.error.ProblemResponseWriter;
 import com.fwdford.forwardapi.error.Problems;
+import com.fwdford.forwardapi.util.LogSanitizer;
 import com.fwdford.forwardapi.web.ClientIpResolver;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
@@ -28,6 +33,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -41,6 +49,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   /** Upper bound on tracked clients; the maps are reset when exceeded (memory guard). */
   private static final int MAX_TRACKED_CLIENTS = 50_000;
+
+  private static final RequestMatcher LOGIN_ENDPOINT =
+      PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, LOGIN_PATH);
 
   private final AppProperties.RateLimit limits;
   private final ClientIpResolver ipResolver;
@@ -60,15 +71,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
       HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
       throws ServletException, IOException {
     String ip = ipResolver.resolve(req);
-
-    if (!tryConsume(globalBuckets, ip, limits.max(), limits.window(), req, resp)) {
-      return;
-    }
-    if ("POST".equalsIgnoreCase(req.getMethod()) && LOGIN_PATH.equals(req.getRequestURI())) {
-      if (!tryConsume(loginBuckets, ip, limits.loginMax(), limits.loginWindow(), req, resp)) {
-        log.warn("login_rate_limited ip={}", ip);
-        return;
+    boolean allowed = tryConsume(globalBuckets, ip, limits.max(), limits.window(), resp);
+    if (allowed && LOGIN_ENDPOINT.matches(req)) {
+      allowed = tryConsume(loginBuckets, ip, limits.loginMax(), limits.loginWindow(), resp);
+      if (!allowed) {
+        log.warn("login_rate_limited ip={}", LogSanitizer.sanitize(ip));
       }
+    }
+    if (!allowed) {
+      ApiException ex = ApiException.tooManyRequests();
+      writer.write(resp, Problems.build(ex.status(), ex.code(), ex.title(), ex.detail(), req));
+      return;
     }
     chain.doFilter(req, resp);
   }
@@ -78,27 +91,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
       String key,
       int capacity,
       Duration window,
-      HttpServletRequest req,
-      HttpServletResponse resp)
-      throws IOException {
+      HttpServletResponse resp) {
     if (buckets.size() > MAX_TRACKED_CLIENTS) {
       buckets.clear();
     }
     Bucket bucket = buckets.computeIfAbsent(key, k -> newBucket(capacity, window));
     ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
-    if (probe.isConsumed()) {
-      resp.setHeader("X-RateLimit-Limit", String.valueOf(capacity));
-      resp.setHeader("X-RateLimit-Remaining", String.valueOf(probe.getRemainingTokens()));
-      return true;
-    }
-    long retryAfter =
-        Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1);
-    resp.setHeader("Retry-After", String.valueOf(retryAfter));
     resp.setHeader("X-RateLimit-Limit", String.valueOf(capacity));
-    resp.setHeader("X-RateLimit-Remaining", "0");
-    ApiException ex = ApiException.tooManyRequests();
-    writer.write(resp, Problems.build(ex.status(), ex.code(), ex.title(), ex.detail(), req));
-    return false;
+    resp.setHeader("X-RateLimit-Remaining", String.valueOf(probe.getRemainingTokens()));
+    if (!probe.isConsumed()) {
+      long retryAfter =
+          Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1);
+      resp.setHeader("Retry-After", String.valueOf(retryAfter));
+    }
+    return probe.isConsumed();
   }
 
   private static Bucket newBucket(int capacity, Duration window) {

@@ -9,6 +9,7 @@ package com.fwdford.forwardapi.error;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fwdford.forwardapi.util.LogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.ArrayList;
@@ -82,7 +83,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       DataIntegrityViolationException ex, HttpServletRequest req) {
     log.warn(
         "data_integrity_violation path={} cause={}",
-        req.getRequestURI(),
+        LogSanitizer.sanitize(req.getRequestURI()),
         ex.getMostSpecificCause().getClass().getSimpleName());
     ProblemDetail pd =
         Problems.build(
@@ -108,7 +109,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest req) {
-    log.error("unhandled_error path={} type={}", req.getRequestURI(), ex.getClass().getName(), ex);
+    log.error(
+        "unhandled_error path={} type={}",
+        LogSanitizer.sanitize(req.getRequestURI()),
+        ex.getClass().getName(),
+        ex);
     ApiException api = ApiException.internal();
     return handleApi(api, req);
   }

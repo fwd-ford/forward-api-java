@@ -14,13 +14,26 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @Hidden
 @RestController
 public class ProblemErrorController implements ErrorController {
 
-  @RequestMapping("/error")
+  // Error dispatches keep the original HTTP method, so every method is listed explicitly.
+  // The API is stateless (no cookies), so there is no CSRF surface on this handler.
+  @RequestMapping(
+      value = "/error",
+      method = {
+        RequestMethod.GET,
+        RequestMethod.HEAD,
+        RequestMethod.POST,
+        RequestMethod.PUT,
+        RequestMethod.PATCH,
+        RequestMethod.DELETE,
+        RequestMethod.OPTIONS
+      })
   public ResponseEntity<ProblemDetail> error(HttpServletRequest req) {
     Object rawStatus = req.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
     HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;

@@ -1,11 +1,10 @@
-// Resolves the client IP used for rate limiting and audit. Behind Fly.io every request
-// arrives from the edge proxy, so a trusted header (TRUSTED_CLIENT_IP_HEADER, e.g.
-// Fly-Client-IP, which the proxy overwrites) can be configured. Without it the socket
-// address is used; client-supplied X-Forwarded-For is never trusted blindly.
-// Resolve o IP do cliente para rate limit e auditoria (header confiavel opcional).
+// Client IP used for rate limiting and audit. It is the servlet container's remote address:
+// behind a reverse proxy (Render) set server.forward-headers-strategy=native so Tomcat's
+// RemoteIpValve replaces it with the address from X-Forwarded-For, trusting that header only
+// when it comes from an internal proxy. Client-supplied headers are never read here.
+// IP do cliente para rate limit e auditoria: endereco remoto resolvido pelo container.
 package com.fwdford.forwardapi.web;
 
-import com.fwdford.forwardapi.config.AppProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -15,23 +14,7 @@ public class ClientIpResolver {
 
   private static final Pattern IP_LITERAL = Pattern.compile("^[0-9a-fA-F:.]{2,45}$");
 
-  private final String trustedHeader;
-
-  public ClientIpResolver(AppProperties props) {
-    String header = props.trustedClientIpHeader();
-    this.trustedHeader = header == null || header.isBlank() ? null : header.trim();
-  }
-
   public String resolve(HttpServletRequest req) {
-    if (trustedHeader != null) {
-      String value = req.getHeader(trustedHeader);
-      if (value != null) {
-        String candidate = value.split(",", 2)[0].trim();
-        if (IP_LITERAL.matcher(candidate).matches()) {
-          return candidate;
-        }
-      }
-    }
     return req.getRemoteAddr();
   }
 

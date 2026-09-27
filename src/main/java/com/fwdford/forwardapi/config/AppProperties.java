@@ -15,7 +15,6 @@ public record AppProperties(
     @DefaultValue RateLimit rateLimit,
     @DefaultValue Jwt jwt,
     String internalApiKey,
-    String trustedClientIpHeader,
     @DefaultValue("1048576") long maxBodyBytes) {
 
   public boolean isProduction() {
