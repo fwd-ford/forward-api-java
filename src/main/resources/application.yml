@@ -42,6 +42,13 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    # Passwords used by db/bootstrap (bcrypt-hashed in SQL, never logged). Blank = skip.
+    # ADMIN_BOOTSTRAP_PASSWORD: creates admin@forward.dev only when set (no default).
+    # DEMO_USERS_PASSWORD: GESTOR/ATENDENTE demo users (accepted risk: low privilege,
+    # synthetic data; the mobile app's "Usar usuário de teste" relies on the default).
+    placeholders:
+      "[admin_bootstrap_password]": ${ADMIN_BOOTSTRAP_PASSWORD:}
+      "[demo_users_password]": ${DEMO_USERS_PASSWORD:Forward@2026}
   jackson:
     # Every JSON payload (requests and responses) uses snake_case.
     property-naming-strategy: SNAKE_CASE
@@ -63,6 +70,8 @@ logging:
     root: ${LOG_LEVEL:INFO}
     org.springframework.security: WARN
     io.zonky.test.db.postgres: WARN
+    # Flyway logs every SQL statement at DEBUG; the bootstrap statements carry passwords.
+    org.flywaydb: INFO
 
 springdoc:
   # Keep ApiProblem/FieldProblem: they are referenced only from components.responses.
