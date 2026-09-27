@@ -2,46 +2,46 @@ Evidência de execução dos testes automatizados - forward-api-java (Sprint 3)
 ==============================================================================
 
 Comando:   ./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality
-Commit:    feat/sprint3-soa-jwt-rbac @ b333df0
+Commit:    fix/security-review-f18-cves @ c4b5526
 Ambiente:  Windows 11, Java 17.0.18 (Temurin), Maven 3.9.6 (wrapper),
            PostgreSQL 16.15 embarcado (Zonky) com migrations Flyway V1..V15 e seed
 Relatórios: target/surefire-reports (XML/TXT), target/reports/surefire.html,
             target/site/jacoco/index.html (cópias em docs/evidencias)
 
-Resultado: 217 testes, 0 falhas, 0 erros, 0 ignorados (119 unitários + 98 de integração HTTP)
+Resultado: 220 testes, 0 falhas, 0 erros, 0 ignorados (121 unitários + 99 de integração HTTP)
 
 Classe                       Tipo              Testes Falhas  Erros Ignor.  Tempo(s)
 ------------------------------------------------------------------------------------
 ApiExceptionTest             unitário               9      0      0      0      0.20
-AuthIT                       integração HTTP       12      0      0      0     14.28
+AuthIT                       integração HTTP       12      0      0      0     13.14
 ErrorHandlingIT              integração HTTP        9      0      0      0      0.14
-HttpServerIT                 integração HTTP        7      0      0      0      5.73
-LeadIT                       integração HTTP       16      0      0      0      0.37
-ProdMigrationIT              integração HTTP        2      0      0      0      6.45
-SecurityIT                   integração HTTP       23      0      0      0      1.08
-ServiceEventIT               integração HTTP       10      0      0      0      0.22
-TokenRevocationIT            integração HTTP        8      0      0      0      1.02
-UserIT                       integração HTTP       11      0      0      0      0.33
+HttpServerIT                 integração HTTP        7      0      0      0      5.61
+LeadIT                       integração HTTP       16      0      0      0      0.36
+ProdMigrationIT              integração HTTP        3      0      0      0      8.33
+SecurityIT                   integração HTTP       23      0      0      0      0.90
+ServiceEventIT               integração HTTP       10      0      0      0      0.19
+TokenRevocationIT            integração HTTP        8      0      0      0      0.98
+UserIT                       integração HTTP       11      0      0      0      0.29
 HmacValidatorTest            unitário              14      0      0      0      0.02
 JwtAuthenticationFilterTest  unitário              16      0      0      0      0.03
 JwtServiceTest               unitário              20      0      0      0      0.04
-UserStateCacheTest           unitário               8      0      0      0      0.02
-CustomerServiceTest          unitário              10      0      0      0      0.50
+UserStateCacheTest           unitário               8      0      0      0      0.01
+CustomerServiceTest          unitário              10      0      0      0      0.48
 ScoreServiceTest             unitário               6      0      0      0      0.10
-ServiceEventServiceTest      unitário              10      0      0      0      0.42
-LogSanitizerTest             unitário               5      0      0      0      0.01
+ServiceEventServiceTest      unitário              10      0      0      0      0.40
+LogSanitizerTest             unitário               7      0      0      0      0.01
 SecureXmlTest                unitário               4      0      0      0      0.03
 ValidationsTest              unitário              17      0      0      0      0.03
 ------------------------------------------------------------------------------------
-TOTAL                                             217      0      0      0
+TOTAL                                             220      0      0      0
 
 Linhas finais do log do Maven:
-  [INFO] Tests run: 217, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] Tests run: 220, Failures: 0, Errors: 0, Skipped: 0
   [INFO] You have 0 Checkstyle violations.
   [INFO] BugInstance size is 0
   [INFO] BUILD SUCCESS
-  [INFO] Total time:  59.374 s
-  [INFO] Finished at: 2026-09-27T05:11:06-03:00
+  [INFO] Total time:  57.665 s
+  [INFO] Finished at: 2026-09-27T05:50:27-03:00
 
 Testes executados (método e cenário):
   [OK  ] ApiExceptionTest.conflict_and_unprocessable_use_409_and_422
@@ -97,8 +97,9 @@ Testes executados (método e cenário):
   [OK  ] LeadIT.filters_and_pagination  (filtros de status e prioridade e paginação limit/offset)
   [OK  ] LeadIT.get_lead_detail  (detalhe do lead traz dados de cliente, veículo e score)
   [OK  ] LeadIT.invalid_filters_are_400  (filtro com status desconhecido ou offset negativo: 400)
+  [OK  ] ProdMigrationIT.creates_admin_only_when_the_bootstrap_password_is_set  (perfil prod com ADMIN_BOOTSTRAP_PASSWORD em banco vazio: ADMIN criado e faz login)
   [OK  ] ProdMigrationIT.upgrades_existing_forward_infra_schema
-  [OK  ] ProdMigrationIT.creates_everything_on_an_empty_database  (perfil prod em banco vazio: todas as migrations e o bootstrap)
+  [OK  ] ProdMigrationIT.remediates_a_legacy_admin_with_the_published_password
   [OK  ] SecurityIT.atendente_cannot_manage_users  (ATENDENTE em /api/v1/users: 403 ACCESS_DENIED)
   [OK  ] SecurityIT.own_dealer_customer_and_score_are_readable  (cliente da própria concessionária e seu score: 200)
   [OK  ] SecurityIT.no_token_is_401  (sem token: 401 AUTH_REQUIRED com WWW-Authenticate)
@@ -239,7 +240,9 @@ Testes executados (método e cenário):
   [OK  ] LogSanitizerTest.regular_text_and_accents_are_kept
   [OK  ] LogSanitizerTest.other_control_characters_are_replaced
   [OK  ] LogSanitizerTest.long_values_are_truncated
+  [OK  ] LogSanitizerTest.mask_handles_short_values_null_and_control_characters
   [OK  ] LogSanitizerTest.line_breaks_cannot_forge_new_log_lines
+  [OK  ] LogSanitizerTest.vin_is_masked_except_the_last_six_characters
   [OK  ] SecureXmlTest.plain_document_without_doctype_is_parsed
   [OK  ] SecureXmlTest.factory_disables_xinclude_and_entity_expansion
   [OK  ] SecureXmlTest.doctype_with_external_entity_is_rejected
