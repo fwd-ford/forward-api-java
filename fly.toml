@@ -8,10 +8,24 @@ primary_region = "gru"
   PORT = "8080"
   ENV = "production"
   LOG_LEVEL = "INFO"
+  # The hosted Supabase project (database + auth) was deleted. The API is now
+  # self-contained: it issues its own JWTs and, with the "demo" profile, runs an
+  # embedded PostgreSQL 16 seeded with synthetic data and demo users on every boot
+  # (data is ephemeral). To use a real database instead, drop this variable and set
+  # DATABASE_URL / DATABASE_USER / DATABASE_PASSWORD as Fly secrets.
+  # Required secret (ENV=production fails fast without it):
+  #   fly secrets set JWT_SECRET="$(openssl rand -base64 48)"
+  SPRING_PROFILES_ACTIVE = "demo"
   ALLOWED_ORIGINS = "https://expo.dev,https://expo.io,http://localhost:8081,http://127.0.0.1:8081"
   RATE_LIMIT_MAX = "60"
   RATE_LIMIT_WINDOW = "1m"
+  LOGIN_RATE_LIMIT_MAX = "5"
+  LOGIN_RATE_LIMIT_WINDOW = "1m"
+  JWT_EXPIRATION_MINUTES = "60"
   MAX_BODY_BYTES = "1048576"
+  # Fly's edge proxy sets Fly-Client-IP (clients cannot forge it) and X-Forwarded-*.
+  TRUSTED_CLIENT_IP_HEADER = "Fly-Client-IP"
+  FORWARD_HEADERS_STRATEGY = "native"
 
 [http_service]
   internal_port = 8080
@@ -24,7 +38,8 @@ primary_region = "gru"
   [[http_service.checks]]
     interval = "30s"
     timeout = "5s"
-    grace_period = "30s"
+    # Embedded PostgreSQL init + Flyway + Spring Boot on a shared CPU.
+    grace_period = "90s"
     method = "GET"
     path = "/health"
 

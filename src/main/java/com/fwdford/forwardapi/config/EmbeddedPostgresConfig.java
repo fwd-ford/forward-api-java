@@ -51,6 +51,9 @@ public class EmbeddedPostgresConfig {
     }
     EmbeddedPostgres pg = builder.start();
     log.info("embedded_postgres_started port={} version=16", pg.getPort());
+    log.warn(
+        "embedded_database_active: data is ephemeral and seeded with public demo credentials;"
+            + " never store real customer data in this mode.");
     return pg;
   }
 

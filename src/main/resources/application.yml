@@ -9,6 +9,8 @@
 server:
   port: ${PORT:8080}
   shutdown: graceful
+  # "native" behind a trusted proxy (Fly.io) so Location headers keep the https scheme.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
   error:
     whitelabel:
       enabled: false
@@ -61,6 +63,8 @@ logging:
     io.zonky.test.db.postgres: WARN
 
 springdoc:
+  # Keep ApiProblem/FieldProblem: they are referenced only from components.responses.
+  remove-broken-reference-definitions: false
   api-docs:
     path: /v3/api-docs
   swagger-ui:
