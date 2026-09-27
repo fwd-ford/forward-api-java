@@ -3,13 +3,15 @@
 #
 # Profiles:
 #   (default)  PostgreSQL from DATABASE_URL, Flyway applies db/migration only.
-#   demo       Embedded PostgreSQL 16 (no Docker) + migrations + demo seed.
-#   seed       Adds the demo seed to an external PostgreSQL (use with an empty database).
-#   test       Used by the automated tests (embedded PostgreSQL + seed, fixed JWT secret).
+#   prod       Render + Supabase: baseline at 13 on the forward-infra schema, V14+ and the
+#              idempotent db/bootstrap data (demo users, leads). See application-prod.yml.
+#   demo       Embedded PostgreSQL 16 (no Docker) + migrations + bootstrap + demo seed.
+#   test       Used by the automated tests (embedded PostgreSQL, fixed JWT secret).
 server:
   port: ${PORT:8080}
   shutdown: graceful
-  # "native" behind a trusted proxy (Fly.io) so Location headers keep the https scheme.
+  # "native" behind a reverse proxy (Render): Tomcat's RemoteIpValve then takes the client IP
+  # and scheme from X-Forwarded-* sent by trusted internal proxies only.
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
   error:
     whitelabel:
@@ -27,7 +29,7 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 10s
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:55432/forward_api?sslmode=disable}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:55432/forward?sslmode=disable}
     username: ${DATABASE_USER:forward}
     password: ${DATABASE_PASSWORD:forward_dev}
     hikari:
@@ -90,9 +92,6 @@ forward:
     audience: forward-app
     clock-skew-seconds: 30
   internal-api-key: ${INTERNAL_API_KEY:}
-  # Header set by a trusted reverse proxy with the real client IP (Fly.io: Fly-Client-IP).
-  # Empty = use the socket address. Never point this at a header clients can forge.
-  trusted-client-ip-header: ${TRUSTED_CLIENT_IP_HEADER:}
   max-body-bytes: ${MAX_BODY_BYTES:1048576}
   # Log format consumed by logback-spring.xml: JSON or CONSOLE.
   # LOG_FORMAT wins; otherwise ENV=production switches to JSON.

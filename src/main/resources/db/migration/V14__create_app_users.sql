@@ -1,6 +1,7 @@
 -- Migration: 014_create_app_users
--- Application users that authenticate against forward-api itself (the hosted
--- Supabase Auth project was deleted, so the API now issues its own JWTs).
+-- Application users that authenticate against forward-api itself (the API issues its own
+-- JWTs; Supabase Auth is no longer used). Safe to run on the original forward-infra schema
+-- (001-013), which is how the production database on Supabase was created.
 -- Passwords are stored ONLY as BCrypt hashes; the CHECK constraint below makes
 -- it impossible to persist a plaintext password by accident.
 -- Usuarios da aplicacao (login proprio da API). Senha somente como hash BCrypt.
@@ -33,6 +34,23 @@ DROP TRIGGER IF EXISTS trg_app_users_updated_at ON app_users;
 CREATE TRIGGER trg_app_users_updated_at
     BEFORE UPDATE ON app_users
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Defense in depth for hosted Postgres (Supabase): its Data API exposes tables in the public
+-- schema to the anon/authenticated roles. RLS without policies plus explicit revokes keeps
+-- app_users (password hashes) unreachable there; the API connects as the table owner, which
+-- bypasses RLS, and enforces authorization itself.
+-- RLS sem politicas e revokes: a Data API do Supabase nao expoe app_users.
+ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON app_users FROM PUBLIC;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+        EXECUTE 'REVOKE ALL ON app_users FROM anon';
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        EXECUTE 'REVOKE ALL ON app_users FROM authenticated';
+    END IF;
+END $$;
 
 COMMENT ON TABLE app_users IS 'Users that log in to forward-api (ATENDENTE, GESTOR, ADMIN). Passwords stored as BCrypt only.';
 COMMENT ON COLUMN app_users.role IS 'ATENDENTE and GESTOR are scoped to dealer_id; ADMIN sees every dealer.';

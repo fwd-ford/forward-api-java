@@ -70,11 +70,11 @@ class LeadIT extends IntegrationTest {
   void filters_and_pagination() throws Exception {
     mvc.perform(get("/api/v1/leads?status=new").header("Authorization", bearer(ADMIN)))
         .andExpect(status().isOk())
-        .andExpect(header().string("X-Total-Count", "5"))
+        .andExpect(header().string("X-Total-Count", String.valueOf(TestData.LEADS_NEW)))
         .andExpect(jsonPath("$[*].status").value(Matchers.everyItem(Matchers.is("new"))));
     mvc.perform(get("/api/v1/leads?priority=critical").header("Authorization", bearer(ADMIN)))
         .andExpect(status().isOk())
-        .andExpect(header().string("X-Total-Count", "4"));
+        .andExpect(header().string("X-Total-Count", String.valueOf(TestData.LEADS_CRITICAL)));
     mvc.perform(get("/api/v1/leads?limit=2&offset=2").header("Authorization", bearer(ADMIN)))
         .andExpect(status().isOk())
         .andExpect(header().string("X-Total-Count", String.valueOf(TestData.LEADS_TOTAL)))

@@ -1,6 +1,6 @@
 package com.fwdford.forwardapi.it;
 
-/** Identifiers from src/main/resources/db/seed/R__seed_demo_data.sql. */
+/** Identifiers from db/bootstrap/R__bootstrap_demo_data.sql and db/seed/R__seed_demo_data.sql. */
 public final class TestData {
 
   public static final String PASSWORD = "Forward@2026";
@@ -14,11 +14,13 @@ public final class TestData {
   public static final String DEALER_1 = "d0000000-0000-4000-8000-000000000001";
   public static final String DEALER_2 = "d0000000-0000-4000-8000-000000000002";
 
-  /** Dealer F0001: 8 leads. Dealer F0002: 5 leads. Total: 18 leads. */
-  public static final int LEADS_DEALER_1 = 8;
+  /** Dealer F0001: 10 leads. Dealer F0002: 7 leads. Total: 22 leads (8 new, 6 critical). */
+  public static final int LEADS_DEALER_1 = 10;
 
-  public static final int LEADS_DEALER_2 = 5;
-  public static final int LEADS_TOTAL = 18;
+  public static final int LEADS_DEALER_2 = 7;
+  public static final int LEADS_TOTAL = 22;
+  public static final int LEADS_NEW = 8;
+  public static final int LEADS_CRITICAL = 6;
 
   public static final String LEAD_NEW_DEALER_1 = "a1000000-0000-4000-8000-000000000001";
   public static final String LEAD_CONTACTED_DEALER_1 = "a1000000-0000-4000-8000-000000000004";

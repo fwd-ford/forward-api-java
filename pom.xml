@@ -94,7 +94,7 @@
 
         <!--
           Embedded PostgreSQL 16 (no Docker) used by the "demo" and "test" profiles.
-          Native binaries are large, so only Linux x86_64 (CI, Docker, Fly.io) is always
+          Native binaries are large, so only Linux x86_64 (CI, Docker, Render) is always
           packaged; Windows, macOS and Linux arm64 binaries are added by the OS-activated
           profiles at the end of this file when building on those platforms.
         -->

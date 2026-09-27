@@ -9,9 +9,8 @@ COPY src ./src
 RUN ./mvnw -q -B -ntp -DskipTests package
 
 # Runtime stage.
-# Ubuntu Jammy (glibc) instead of Alpine: with SPRING_PROFILES_ACTIVE=demo the API starts
-# an embedded PostgreSQL 16 whose bundled binaries need glibc. Runs as a non-root user
-# (PostgreSQL refuses to run as root anyway).
+# Ubuntu Jammy (glibc) instead of Alpine so the same image can also run the "demo" profile,
+# whose embedded PostgreSQL binaries need glibc. Runs as a non-root user.
 FROM eclipse-temurin:17-jre-jammy
 RUN groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
@@ -20,18 +19,9 @@ RUN groupadd --system --gid 10001 app \
 WORKDIR /app
 COPY --from=build --chown=app:app /src/target/forward-api.jar /app/forward-api.jar
 USER 10001:10001
-ENV TZ=America/Sao_Paulo
+# Defaults sized for a 512 MB instance; the platform can override JAVA_TOOL_OPTIONS
+# (render.yaml does, for the prod profile). The HTTP port comes from $PORT (default 8080).
+ENV TZ=America/Sao_Paulo \
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=15 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError -Djava.io.tmpdir=/tmp"
 EXPOSE 8080
-# Sized for a 512 MB machine shared with the embedded PostgreSQL (demo profile):
-# ~230 MB max heap, small metaspace/code cache, serial GC, C1-only JIT for fast boot.
-ENTRYPOINT ["java", \
-  "-XX:MaxRAMPercentage=45", \
-  "-XX:InitialRAMPercentage=15", \
-  "-XX:+UseSerialGC", \
-  "-XX:MaxMetaspaceSize=160m", \
-  "-XX:ReservedCodeCacheSize=64m", \
-  "-XX:TieredStopAtLevel=1", \
-  "-Xss512k", \
-  "-XX:+ExitOnOutOfMemoryError", \
-  "-Djava.io.tmpdir=/tmp", \
-  "-jar", "/app/forward-api.jar"]
+ENTRYPOINT ["java", "-jar", "/app/forward-api.jar"]

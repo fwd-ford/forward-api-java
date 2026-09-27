@@ -1,8 +1,8 @@
-# Test profile: embedded PostgreSQL + migrations + seed (see EmbeddedPostgresConfig).
+# Test profile: embedded PostgreSQL + migrations + bootstrap + seed (EmbeddedPostgresConfig).
 # The JWT key below is a test fixture only; it never reaches any deployed environment.
 spring:
   flyway:
-    locations: classpath:db/migration,classpath:db/seed
+    locations: classpath:db/migration,classpath:db/bootstrap,classpath:db/seed
 
 forward:
   env: test

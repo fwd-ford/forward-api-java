@@ -53,7 +53,7 @@ public class OpenApiConfig {
       | GESTOR | Tudo do ATENDENTE + cria e altera eventos de serviço da concessionária. |
       | ADMIN | Todas as concessionárias, exclui eventos de serviço e administra usuários. |
 
-      ## Usuários de demonstração (perfil `demo`)
+      ## Usuários de demonstração (perfis `prod` e `demo`)
       Senha de todos: `Forward@2026`
 
       | E-mail | Perfil | Concessionária |
@@ -115,10 +115,10 @@ public class OpenApiConfig {
                     .url("https://github.com/fwd-ford/forward-api-java#readme"))
             .servers(
                 List.of(
-                    new Server().url("http://localhost:8080").description("Local (perfil demo)"),
                     new Server()
-                        .url("https://forward-api-java.fly.dev")
-                        .description("Fly.io (demonstração)")))
+                        .url("https://forwardservice-api.onrender.com")
+                        .description("Produção (Render + Supabase)"),
+                    new Server().url("http://localhost:8080").description("Local (perfil demo)")))
             .components(components)
             .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
             .addSecurityItem(new SecurityRequirement().addList("apiKey"));
