@@ -18,7 +18,7 @@ info:
     | GESTOR | Tudo do ATENDENTE + cria e altera eventos de serviço da concessionária. |
     | ADMIN | Todas as concessionárias, exclui eventos de serviço e administra usuários. |
 
-    ## Usuários de demonstração (perfil `demo`)
+    ## Usuários de demonstração (perfis `prod` e `demo`)
     Senha de todos: `Forward@2026`
 
     | E-mail | Perfil | Concessionária |
@@ -38,10 +38,10 @@ externalDocs:
   description: "README, arquitetura e matriz de permissões"
   url: https://github.com/fwd-ford/forward-api-java#readme
 servers:
+- url: https://forwardservice-api.onrender.com
+  description: Produção (Render + Supabase)
 - url: http://localhost:8080
   description: Local (perfil demo)
-- url: https://forward-api-java.fly.dev
-  description: Fly.io (demonstração)
 security:
 - bearerAuth: []
 - apiKey: []
@@ -82,16 +82,16 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "200":
           description: Evento encontrado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServiceEvent"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
     put:
@@ -116,12 +116,6 @@ paths:
               $ref: "#/components/schemas/ServiceEventRequest"
         required: true
       responses:
-        "200":
-          description: Evento atualizado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceEvent"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -136,6 +130,12 @@ paths:
           $ref: "#/components/responses/UnprocessableEntity"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Evento atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEvent"
         "400":
           $ref: "#/components/responses/BadRequest"
     delete:
@@ -211,8 +211,6 @@ paths:
       responses:
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "429":
-          $ref: "#/components/responses/TooManyRequests"
         "200":
           description: Página de usuários
           headers:
@@ -227,6 +225,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "403":
           $ref: "#/components/responses/Forbidden"
         "400":
@@ -255,10 +255,6 @@ paths:
           $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "201":
           description: Usuário criado
           headers:
@@ -269,6 +265,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /api/v1/service-events:
     get:
       tags:
@@ -341,16 +341,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
-        "415":
-          $ref: "#/components/responses/UnsupportedMediaType"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "201":
           description: Evento criado
           headers:
@@ -361,6 +351,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServiceEvent"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /api/v1/auth/login:
     post:
       tags:
@@ -383,16 +383,16 @@ paths:
           $ref: "#/components/responses/InvalidCredentials"
         "429":
           $ref: "#/components/responses/TooManyRequests"
-        "415":
-          $ref: "#/components/responses/UnsupportedMediaType"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "200":
           description: Login realizado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "400":
+          $ref: "#/components/responses/BadRequest"
       security: []
   /api/v1/users/{id}:
     get:
@@ -409,12 +409,6 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          description: Usuário encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -425,6 +419,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "200":
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
     delete:
       tags:
       - Users
@@ -483,16 +483,16 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "200":
           description: Usuário atualizado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
   /api/v1/leads/{id}:
@@ -516,18 +516,18 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
-        "200":
-          description: Lead encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Lead"
         "404":
           $ref: "#/components/responses/NotFound"
         "403":
           $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "200":
+          description: Lead encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
     patch:
       tags:
       - Leads
@@ -556,6 +556,12 @@ paths:
               $ref: "#/components/schemas/LeadPatchRequest"
         required: true
       responses:
+        "200":
+          description: Lead atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -568,12 +574,6 @@ paths:
           $ref: "#/components/responses/Conflict"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "200":
-          description: Lead atualizado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Lead"
         "400":
           $ref: "#/components/responses/BadRequest"
   /ready:
@@ -759,6 +759,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "200":
           description: Página de leads (pode ser vazia)
           headers:
@@ -773,10 +777,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Lead"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "400":
-          $ref: "#/components/responses/BadRequest"
   /api/v1/customers/{id}:
     get:
       tags:

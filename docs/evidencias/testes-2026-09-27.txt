@@ -2,40 +2,44 @@ Evidência de execução dos testes automatizados - forward-api-java (Sprint 3)
 ==============================================================================
 
 Comando:   ./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality
-Commit:    feat/sprint3-soa-jwt-rbac @ bf2f0e2
+Commit:    feat/sprint3-soa-jwt-rbac @ 0ad24c3
 Ambiente:  Windows 11, Java 17.0.18 (Temurin), Maven 3.9.6 (wrapper),
            PostgreSQL 16.15 embarcado (Zonky) com migrations Flyway V1..V15 e seed
 Relatórios: target/surefire-reports (XML/TXT), target/reports/surefire.html,
             target/site/jacoco/index.html (cópias em docs/evidencias)
 
-Resultado: 171 testes, 0 falhas, 0 erros, 0 ignorados (84 unitários + 87 de integração HTTP)
+Resultado: 192 testes, 0 falhas, 0 erros, 0 ignorados (102 unitários + 90 de integração HTTP)
 
 Classe                       Tipo              Testes Falhas  Erros Ignor.  Tempo(s)
 ------------------------------------------------------------------------------------
-ApiExceptionTest             unitário               9      0      0      0      0.25
-AuthIT                       integração HTTP       12      0      0      0     13.15
-ErrorHandlingIT              integração HTTP        9      0      0      0      0.14
-HttpServerIT                 integração HTTP        6      0      0      0      5.28
-LeadIT                       integração HTTP       16      0      0      0      0.33
-SecurityIT                   integração HTTP       23      0      0      0      1.14
-ServiceEventIT               integração HTTP       10      0      0      0      0.23
-UserIT                       integração HTTP       11      0      0      0      0.38
-HmacValidatorTest            unitário              14      0      0      0      0.03
-JwtServiceTest               unitário              18      0      0      0      0.06
-CustomerServiceTest          unitário              10      0      0      0      0.51
+ApiExceptionTest             unitário               9      0      0      0      0.18
+AuthIT                       integração HTTP       12      0      0      0     13.67
+ErrorHandlingIT              integração HTTP        9      0      0      0      0.13
+HttpServerIT                 integração HTTP        7      0      0      0      5.57
+LeadIT                       integração HTTP       16      0      0      0      0.34
+ProdMigrationIT              integração HTTP        2      0      0      0      6.12
+SecurityIT                   integração HTTP       23      0      0      0      0.84
+ServiceEventIT               integração HTTP       10      0      0      0      0.17
+UserIT                       integração HTTP       11      0      0      0      0.33
+HmacValidatorTest            unitário              14      0      0      0      0.02
+JwtAuthenticationFilterTest  unitário               9      0      0      0      0.01
+JwtServiceTest               unitário              18      0      0      0      0.04
+CustomerServiceTest          unitário              10      0      0      0      0.48
 ScoreServiceTest             unitário               6      0      0      0      0.10
 ServiceEventServiceTest      unitário              10      0      0      0      0.43
+LogSanitizerTest             unitário               5      0      0      0      0.01
+SecureXmlTest                unitário               4      0      0      0      0.03
 ValidationsTest              unitário              17      0      0      0      0.03
 ------------------------------------------------------------------------------------
-TOTAL                                             171      0      0      0
+TOTAL                                             192      0      0      0
 
 Linhas finais do log do Maven:
-  [INFO] Tests run: 171, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
   [INFO] You have 0 Checkstyle violations.
   [INFO] BugInstance size is 0
   [INFO] BUILD SUCCESS
-  [INFO] Total time:  48.122 s
-  [INFO] Finished at: 2026-09-27T03:41:39-03:00
+  [INFO] Total time:  54.903 s
+  [INFO] Finished at: 2026-09-27T04:17:12-03:00
 
 Testes executados (método e cenário):
   [OK  ] ApiExceptionTest.conflict_and_unprocessable_use_409_and_422
@@ -71,6 +75,7 @@ Testes executados (método e cenário):
   [OK  ] HttpServerIT.soap_with_token_returns_vehicle  (SOAP GetVehicle com token: 200 com os dados do veículo)
   [OK  ] HttpServerIT.public_endpoints_over_http  (health, OpenAPI e Swagger UI respondem sem token em HTTP real)
   [OK  ] HttpServerIT.soap_requires_token  (SOAP GetVehicle sem token: 401)
+  [OK  ] HttpServerIT.soap_with_doctype_is_rejected  (SOAP com DOCTYPE (XXE) é recusado e a entidade não é expandida)
   [OK  ] HttpServerIT.protected_endpoint_over_http  (rota protegida sem token em HTTP real: 401 problem+json)
   [OK  ] HttpServerIT.soap_unknown_vin_is_fault  (SOAP GetVehicle com VIN inexistente: SOAP Fault (Client))
   [OK  ] HttpServerIT.wsdl_is_public  (WSDL é público e descreve a operação GetVehicle)
@@ -90,6 +95,8 @@ Testes executados (método e cenário):
   [OK  ] LeadIT.filters_and_pagination  (filtros de status e prioridade e paginação limit/offset)
   [OK  ] LeadIT.get_lead_detail  (detalhe do lead traz dados de cliente, veículo e score)
   [OK  ] LeadIT.invalid_filters_are_400  (filtro com status desconhecido ou offset negativo: 400)
+  [OK  ] ProdMigrationIT.upgrades_existing_forward_infra_schema
+  [OK  ] ProdMigrationIT.creates_everything_on_an_empty_database  (perfil prod em banco vazio: todas as migrations e o bootstrap)
   [OK  ] SecurityIT.atendente_cannot_manage_users  (ATENDENTE em /api/v1/users: 403 ACCESS_DENIED)
   [OK  ] SecurityIT.own_dealer_customer_and_score_are_readable  (cliente da própria concessionária e seu score: 200)
   [OK  ] SecurityIT.no_token_is_401  (sem token: 401 AUTH_REQUIRED com WWW-Authenticate)
@@ -148,6 +155,15 @@ Testes executados (método e cenário):
   [OK  ] HmacValidatorTest.verifyRejectsFutureTimestampBeyondSkew
   [OK  ] HmacValidatorTest.signIsDeterministic
   [OK  ] HmacValidatorTest.verifyRejectsBitFlippedSignature
+  [OK  ] JwtAuthenticationFilterTest.expired_token_reports_expired
+  [OK  ] JwtAuthenticationFilterTest.no_credentials_is_anonymous_without_failure
+  [OK  ] JwtAuthenticationFilterTest.api_key_is_rejected_when_not_configured
+  [OK  ] JwtAuthenticationFilterTest.other_schemes_and_empty_tokens_are_invalid
+  [OK  ] JwtAuthenticationFilterTest.bearer_scheme_is_case_insensitive
+  [OK  ] JwtAuthenticationFilterTest.matching_api_key_yields_the_service_principal
+  [OK  ] JwtAuthenticationFilterTest.valid_bearer_token_yields_the_principal
+  [OK  ] JwtAuthenticationFilterTest.bearer_token_extraction
+  [OK  ] JwtAuthenticationFilterTest.wrong_api_key_is_rejected_even_with_a_valid_token
   [OK  ] JwtServiceTest.unsigned_token_is_rejected
   [OK  ] JwtServiceTest.wrong_issuer_is_rejected
   [OK  ] JwtServiceTest.admin_token_has_no_dealer_claim
@@ -192,6 +208,15 @@ Testes executados (método e cenário):
   [OK  ] ServiceEventServiceTest.out_of_range_service_code_is_rejected_as_defense_in_depth
   [OK  ] ServiceEventServiceTest.reading_another_dealers_event_is_forbidden
   [OK  ] ServiceEventServiceTest.gestor_cannot_create_event_for_another_dealer
+  [OK  ] LogSanitizerTest.null_is_rendered_explicitly
+  [OK  ] LogSanitizerTest.regular_text_and_accents_are_kept
+  [OK  ] LogSanitizerTest.other_control_characters_are_replaced
+  [OK  ] LogSanitizerTest.long_values_are_truncated
+  [OK  ] LogSanitizerTest.line_breaks_cannot_forge_new_log_lines
+  [OK  ] SecureXmlTest.plain_document_without_doctype_is_parsed
+  [OK  ] SecureXmlTest.factory_disables_xinclude_and_entity_expansion
+  [OK  ] SecureXmlTest.doctype_with_external_entity_is_rejected
+  [OK  ] SecureXmlTest.internal_entity_expansion_bomb_is_rejected
   [OK  ] ValidationsTest.validateUuid_accepts_valid_uuid
   [OK  ] ValidationsTest.validateUuid_rejects_bad_format
   [OK  ] ValidationsTest.validateLimit_integer_returns_default_when_null

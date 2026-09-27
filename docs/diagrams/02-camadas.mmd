@@ -6,7 +6,7 @@ flowchart TB
   CTRL --> SVC["service<br/>regras de negócio, @PreAuthorize,<br/>escopo por concessionária,<br/>máquina de estados, auditoria"]
   SOAP --> SVC
   SVC --> REPO["repository<br/>SQL parametrizado<br/>NamedParameterJdbcTemplate"]
-  REPO --> DB[("PostgreSQL 16<br/>Flyway V1..V15 + seed")]
+  REPO --> DB[("PostgreSQL<br/>Flyway V1..V15 + bootstrap")]
   CTRL -. exceções .-> ERR["error<br/>GlobalExceptionHandler<br/>RFC 7807 problem+json"]
   SEC -. "401 e 403" .-> EP["ProblemAuthenticationEntryPoint<br/>ProblemAccessDeniedHandler"]
   CFG["config<br/>AppProperties, OpenAPI,<br/>EmbeddedPostgres (demo/test)"] -.- SVC

@@ -9,15 +9,18 @@ API REST e SOAP do **ForwardService**, plataforma de retenção de clientes da r
 (Challenge Ford x FIAP 2026). Este repositório é a entrega da Sprint 3 da disciplina de
 **Arquitetura Orientada a Serviços e Web Services**.
 
-- **Autocontida**: o projeto Supabase (banco e autenticação) foi excluído. A API emite e valida os
-  próprios JWTs e, no perfil `demo`, roda com um **PostgreSQL 16 embarcado**, sem Docker e sem
-  nenhum serviço externo.
+- **Autenticação própria**: a API emite e valida os próprios JWTs (o Supabase Auth não é mais
+  usado) e guarda os usuários em `app_users` com senha BCrypt.
+- **Produção**: web service Docker no **Render** (`https://forwardservice-api.onrender.com`) com o
+  banco **PostgreSQL do Supabase** (sa-east-1). No perfil `demo` a API roda com um
+  **PostgreSQL 16 embarcado**, sem Docker e sem nenhum serviço externo.
 - **Segurança**: Spring Security stateless, JWT HS256 com `iss`, `aud`, `exp` e `jti`, perfis
-  ATENDENTE, GESTOR e ADMIN, escopo de dados por concessionária, rate limit, auditoria.
+  ATENDENTE, GESTOR e ADMIN, escopo de dados por concessionária, rate limit, auditoria,
+  proteção contra XXE e log injection.
 - **REST nível 2**: recursos, verbos HTTP corretos (GET, POST, PUT, PATCH, DELETE), status
   coerentes (200, 201 + `Location`, 204, 400, 401, 403, 404, 405, 409, 415, 422, 429).
 - **Erros padronizados** em RFC 7807 (`application/problem+json`) com mensagens em pt-BR.
-- **171 testes automatizados** (84 unitários e 87 de integração HTTP contra PostgreSQL real
+- **192 testes automatizados** (102 unitários e 90 de integração contra PostgreSQL real
   embarcado), cobertura de linhas em torno de 90% (JaCoCo).
 
 ## Sumário
@@ -35,7 +38,7 @@ API REST e SOAP do **ForwardService**, plataforma de retenção de clientes da r
 11. [Testes](#testes)
 12. [SOAP](#soap)
 13. [OpenAPI, Swagger e Postman](#openapi-swagger-e-postman)
-14. [Deploy no Fly.io](#deploy-no-flyio)
+14. [Deploy no Render (Blueprint)](#deploy-no-render-blueprint)
 15. [Solução de problemas](#solução-de-problemas)
 16. [Estrutura do projeto](#estrutura-do-projeto)
 
@@ -54,24 +57,25 @@ sistemas SOAP. Detalhes, fluxo de autenticação, cadeia de filtros e decisões 
 | Tema | Tecnologia |
 |---|---|
 | Linguagem e framework | Java 17, Spring Boot 3.5.14 (Web, Security, Validation, JDBC, Web Services, Actuator) |
-| Banco | PostgreSQL 16; Flyway (V1 a V15); PostgreSQL embarcado Zonky nos perfis `demo` e `test` |
+| Banco | PostgreSQL (Supabase em produção); Flyway V1 a V15 + bootstrap; PostgreSQL 16 embarcado (Zonky) nos perfis `demo` e `test` |
 | Acesso a dados | `NamedParameterJdbcTemplate` com SQL parametrizado (sem ORM) |
 | Autenticação | JWT HS256 emitido pela própria API (JJWT 0.12), senhas BCrypt |
 | Autorização | Spring Security (regras de URL + `@PreAuthorize`) e escopo por concessionária |
-| Proteções | Bucket4j (rate limit por IP), CORS com allowlist, headers de segurança, auditoria em `audit_log` |
+| Proteções | Bucket4j (rate limit por IP), CORS com allowlist, headers de segurança, auditoria em `audit_log`, XML sem DOCTYPE, logs sanitizados |
 | Documentação | springdoc-openapi (Swagger UI), `openapi.yaml`, coleção Postman |
-| Qualidade | JUnit 5, MockMvc, JaCoCo, Spotless, Checkstyle, SpotBugs + FindSecBugs, Trivy, gitleaks |
+| Qualidade | JUnit 5, MockMvc, JaCoCo, Spotless, Checkstyle, SpotBugs + FindSecBugs, Trivy, gitleaks, CodeQL, Semgrep |
+| Hospedagem | Render (Docker, plano free) via Blueprint [`render.yaml`](render.yaml) |
 | Logs | Logback (JSON com Logstash encoder em produção/demo) com `request_id` em todas as linhas |
 
 ## Como executar
 
 Pré-requisito: **Java 17** (Temurin recomendado). O Maven Wrapper baixa o Maven na primeira
-execução. Não é preciso Docker nem banco instalado.
+execução. Não é preciso Docker nem banco instalado para o perfil demo.
 
 ### 1. Perfil demo (sem Docker, sem banco externo)
 
-Sobe um PostgreSQL 16 embarcado, aplica as migrations e o seed de demonstração e inicia a API em
-`http://localhost:8080`.
+Sobe um PostgreSQL 16 embarcado, aplica as migrations, o bootstrap e o seed de demonstração e
+inicia a API em `http://localhost:8080`.
 
 ```bash
 # Linux, macOS ou Git Bash
@@ -85,7 +89,7 @@ Sobe um PostgreSQL 16 embarcado, aplica as migrations e o seed de demonstração
 java -jar target/forward-api.jar --spring.profiles.active=demo
 ```
 
-- Os dados são efêmeros: cada inicialização recria o banco a partir do seed.
+- Os dados são efêmeros: cada inicialização recria o banco.
 - Sem `JWT_SECRET` a API gera uma chave aleatória a cada boot (aviso WARN no log); tokens antigos
   deixam de valer após reiniciar. Para tokens estáveis: `JWT_SECRET=$(openssl rand -base64 48)`.
 - O perfil demo registra logs em JSON; para logs legíveis use `LOG_FORMAT=CONSOLE` (ou `make demo`).
@@ -93,24 +97,24 @@ java -jar target/forward-api.jar --spring.profiles.active=demo
   409, 422, SOAP) e imprime a transcrição (exemplo em
   [`docs/evidencias/smoke-demo.txt`](docs/evidencias/smoke-demo.txt)).
 
-### 2. Com PostgreSQL (docker compose do forward-infra, porta 55432)
+### 2. Com um PostgreSQL existente (perfil prod)
 
-O compose do `forward-infra` publica o PostgreSQL na porta **55432** do host. A API usa um banco
-dedicado (`forward_api`), com o esquema gerenciado pelo Flyway:
+O perfil `prod` é o mesmo usado no Render: aplica as migrations com baseline na versão 13 (o
+esquema 001 a 013 do `forward-infra` já existe) e depois o bootstrap idempotente de dados.
+Funciona tanto no PostgreSQL do `docker compose` do `forward-infra` (porta **55432**) quanto em
+um banco vazio.
 
 ```bash
-cd ../forward-infra/docker && docker compose up -d postgres
-docker exec forward-postgres createdb -U forward forward_api
-cd ../../forward-api-java
+cd ../forward-infra/docker && docker compose up -d postgres && cd ../../forward-api-java
 
-# Esquema + seed de demonstração (perfil seed). Sem o perfil, só as migrations.
-DATABASE_URL='jdbc:postgresql://localhost:55432/forward_api?sslmode=disable' \
+DATABASE_URL='jdbc:postgresql://localhost:55432/forward?sslmode=disable' \
 DATABASE_USER=forward DATABASE_PASSWORD=forward_dev \
-SPRING_PROFILES_ACTIVE=seed ./mvnw spring-boot:run
+JWT_SECRET="$(openssl rand -base64 48)" \
+SPRING_PROFILES_ACTIVE=prod ./mvnw spring-boot:run
 ```
 
-Esses valores de `DATABASE_*` já são o padrão do `application.yml`; o perfil padrão (sem `seed`)
-aplica somente as migrations, que é o comportamento de produção.
+O perfil `prod` assume `ENV=production` (logs JSON e `JWT_SECRET` obrigatório). Sem perfil, a API
+aplica somente as migrations (sem baseline e sem dados).
 
 ## Variáveis de ambiente
 
@@ -118,37 +122,39 @@ Modelo completo em [`.env.example`](.env.example).
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `PORT` | `8080` | Porta HTTP. |
-| `SPRING_PROFILES_ACTIVE` | (vazio) | `demo` (banco embarcado + seed), `seed` (banco externo + seed) ou vazio. |
-| `ENV` | `development` | `production` ativa logs JSON e torna `JWT_SECRET` obrigatório (a API não sobe sem ele). |
-| `JWT_SECRET` | (vazio) | Chave HS256, mínimo 32 bytes. Vazio fora de produção: chave aleatória por boot. |
+| `PORT` | `8080` | Porta HTTP (o Render injeta a sua). |
+| `SPRING_PROFILES_ACTIVE` | (vazio) | `prod` (banco externo, baseline 13 + bootstrap), `demo` (banco embarcado + dados) ou vazio. |
+| `ENV` | `development` (`production` no perfil prod) | `production` ativa logs JSON e torna `JWT_SECRET` obrigatório. |
+| `JWT_SECRET` | (vazio) | Chave HS256, mínimo 32 bytes. No Render é gerada automaticamente. |
 | `JWT_EXPIRATION_MINUTES` | `60` | Validade do token (1 a 1440). |
-| `DATABASE_URL` | `jdbc:postgresql://localhost:55432/forward_api?sslmode=disable` | JDBC do PostgreSQL (ignorado no perfil demo). |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:55432/forward?sslmode=disable` | JDBC do PostgreSQL (ignorado no perfil demo). |
 | `DATABASE_USER`, `DATABASE_PASSWORD` | `forward`, `forward_dev` | Credenciais do banco. |
+| `DATABASE_POOL_SIZE` | `10` (`5` no perfil prod) | Conexões do HikariCP. |
 | `INTERNAL_API_KEY` | (vazio) | Chave do header `X-API-Key` para integrações (perfil SERVICE). Vazio desativa. |
 | `ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:8081` | Allowlist de CORS (curingas são ignorados). |
 | `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW` | `60`, `1m` | Limite global por IP. |
 | `LOGIN_RATE_LIMIT_MAX`, `LOGIN_RATE_LIMIT_WINDOW` | `5`, `1m` | Limite de tentativas de login por IP. |
-| `TRUSTED_CLIENT_IP_HEADER` | (vazio) | Header do proxy com o IP real (Fly.io: `Fly-Client-IP`). |
-| `FORWARD_HEADERS_STRATEGY` | `none` | `native` atrás de proxy confiável (mantém `https` no `Location`). |
+| `FORWARD_HEADERS_STRATEGY` | `none` | `native` atrás de proxy (Render): IP do cliente e `https` vindos de `X-Forwarded-*` de proxies internos. |
 | `LOG_LEVEL`, `LOG_FORMAT` | `INFO`, automático | `LOG_FORMAT=JSON` ou `CONSOLE`. |
 
 ## Usuários de demonstração
 
-Criados pelo seed (perfis `demo`, `seed` e `test`). **Senha de todos: `Forward@2026`** (gravada
-somente como hash BCrypt).
+**Senha de todos: `Forward@2026`** (gravada somente como hash BCrypt, calculado no banco com
+pgcrypto; nenhum hash é versionado).
 
-| E-mail | Perfil | Concessionária | Observação |
+| E-mail | Perfil | Concessionária | Onde existe |
 |---|---|---|---|
-| `admin@forward.dev` | ADMIN | todas | administra usuários, exclui eventos |
-| `gestor@forward.dev` | GESTOR | F0001 Ford Morumbi São Paulo | cria e altera eventos de serviço |
-| `atendente@forward.dev` | ATENDENTE | F0001 Ford Morumbi São Paulo | 8 leads |
-| `atendente2@forward.dev` | ATENDENTE | F0002 Ford Barra Rio | 5 leads |
-| `gestor2@forward.dev` | GESTOR | F0002 Ford Barra Rio | |
-| `inativo@forward.dev` | ATENDENTE | F0001 | desativado: login responde 401 `AUTH_USER_DISABLED` |
+| `admin@forward.dev` | ADMIN | todas | produção (Render), demo e testes |
+| `gestor@forward.dev` | GESTOR | F0001 Ford Morumbi São Paulo | produção, demo e testes |
+| `atendente@forward.dev` | ATENDENTE | F0001 Ford Morumbi São Paulo | produção, demo e testes |
+| `atendente2@forward.dev` | ATENDENTE | F0002 Ford Barra Rio | produção, demo e testes |
+| `gestor2@forward.dev` | GESTOR | F0002 Ford Barra Rio | demo e testes |
+| `inativo@forward.dev` | ATENDENTE (desativado) | F0001 | demo e testes (login: 401 `AUTH_USER_DISABLED`) |
 
-O seed também cria 10 concessionárias, 12 clientes com veículos e scores de churn, 9 eventos de
-serviço e 18 leads em 4 concessionárias, cobrindo todos os status e prioridades.
+O bootstrap ([`db/bootstrap`](src/main/resources/db/bootstrap/R__bootstrap_demo_data.sql)) também
+garante 10 concessionárias, 16 clientes com veículos e scores de churn, 9 eventos de serviço e
+22 leads (10 na F0001 e 7 na F0002) com todos os status e prioridades. Ele referencia as
+concessionárias pelo código e usa `ON CONFLICT DO NOTHING`, então nunca altera dados existentes.
 
 ## Autenticação passo a passo
 
@@ -180,13 +186,14 @@ curl -s -X POST http://localhost:8080/api/v1/auth/login \
 2. Use o token nas demais chamadas:
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+BASE=http://localhost:8080   # ou https://forwardservice-api.onrender.com
+TOKEN=$(curl -s -X POST $BASE/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"gestor@forward.dev","password":"Forward@2026"}' | jq -r .access_token)
 
-curl -i http://localhost:8080/api/v1/me -H "Authorization: Bearer $TOKEN"
-curl -i "http://localhost:8080/api/v1/leads?status=new&limit=10" -H "Authorization: Bearer $TOKEN"
-curl -i -X PATCH http://localhost:8080/api/v1/leads/a1000000-0000-4000-8000-000000000001 \
+curl -i $BASE/api/v1/me -H "Authorization: Bearer $TOKEN"
+curl -i "$BASE/api/v1/leads?status=new&limit=10" -H "Authorization: Bearer $TOKEN"
+curl -i -X PATCH $BASE/api/v1/leads/a1000000-0000-4000-8000-000000000001 \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"status":"contacted","notes":"Cliente pediu retorno amanhã."}'
 ```
@@ -226,6 +233,9 @@ Regras do token:
 Recurso de outra concessionária: **403 `ACCESS_OTHER_DEALER`**; perfil sem permissão: **403
 `ACCESS_DENIED`**. As regras de perfil existem no `SecurityConfig` (URL) e nos serviços
 (`@PreAuthorize`); o escopo por concessionária é aplicado nos serviços com o `dealer_id` do token.
+A autorização é sempre da API: no Supabase, a API conecta como dono das tabelas, então as
+políticas RLS do banco não se aplicam a ela (e `app_users` tem RLS sem políticas e sem grants para
+`anon`/`authenticated`, ou seja, a Data API do Supabase não a expõe).
 
 ## Endpoints
 
@@ -324,17 +334,20 @@ Erros de validação trazem também `errors: [{"field": "status", "message": "..
 ## Testes
 
 ```bash
-./mvnw test                                      # 171 testes (unitários + integração HTTP)
+./mvnw test                                      # 192 testes (unitários + integração)
 ./mvnw verify                                    # + JaCoCo e relatório HTML do Surefire
 ./mvnw spotless:check && ./mvnw verify -P quality  # mesmas verificações do CI
 ```
 
-- **Unitários (84)**: `JwtServiceTest` (emissão, expiração, tolerância, adulteração, `iss`/`aud`,
-  `alg=none`, segredo obrigatório em produção), regras de serviço com Mockito, validações.
-- **Integração (87)**: `@SpringBootTest` + MockMvc contra PostgreSQL 16 embarcado com as
-  migrations e o seed. `AuthIT`, `SecurityIT` (401/403 por perfil e por concessionária, CORS,
-  headers), `LeadIT`, `ServiceEventIT`, `UserIT`, `ErrorHandlingIT` e `HttpServerIT` (Tomcat real:
-  SOAP, WSDL, Swagger). Testes que alteram dados fazem rollback ao final.
+- **Unitários (102)**: `JwtServiceTest` (emissão, expiração, tolerância, adulteração, `iss`/`aud`,
+  `alg=none`, segredo obrigatório em produção), `JwtAuthenticationFilterTest`, `LogSanitizerTest`,
+  `SecureXmlTest` (DOCTYPE/XXE recusados), regras de serviço com Mockito e validações.
+- **Integração (90)**: `@SpringBootTest` + MockMvc contra PostgreSQL 16 embarcado com migrations,
+  bootstrap e seed. `AuthIT`, `SecurityIT` (401/403 por perfil e por concessionária, CORS,
+  headers), `LeadIT`, `ServiceEventIT`, `UserIT`, `ErrorHandlingIT`, `HttpServerIT` (Tomcat real:
+  SOAP, WSDL, XXE, Swagger) e `ProdMigrationIT` (reproduz o banco do Supabase: esquema do
+  forward-infra sem histórico do Flyway + seed antigo, e valida baseline 13, V14+, bootstrap
+  idempotente e dados antigos intactos). Testes que alteram dados fazem rollback ao final.
 - Relatórios: `target/site/jacoco/index.html` (cobertura) e `target/reports/surefire.html`.
 - Evidências desta entrega em [`docs/evidencias/`](docs/evidencias/): resumo da execução
   (`testes-2026-09-27.txt`), cobertura por pacote (`jacoco-resumo.md`), relatório HTML do Surefire
@@ -343,8 +356,8 @@ Erros de validação trazem também `errors: [{"field": "status", "message": "..
 ## SOAP
 
 Contrato em [`src/main/resources/xsd/vehicles.xsd`](src/main/resources/xsd/vehicles.xsd); WSDL
-público em `http://localhost:8080/soap/vehicles.wsdl`. A operação exige o mesmo JWT do REST e
-respeita o escopo por concessionária.
+público em `/soap/vehicles.wsdl`. A operação exige o mesmo JWT do REST, respeita o escopo por
+concessionária e recusa mensagens com DOCTYPE (proteção contra XXE).
 
 ```bash
 curl -s -X POST http://localhost:8080/soap/vehicles \
@@ -362,45 +375,63 @@ inexistente ou de outra concessionária gera um SOAP Fault `Client` com a mensag
 
 | Recurso | Caminho |
 |---|---|
-| Swagger UI (público) | `http://localhost:8080/swagger-ui.html` (botão **Authorize** com o token) |
+| Swagger UI (público) | `/swagger-ui.html` (botão **Authorize** com o token) |
 | OpenAPI JSON / YAML | `/v3/api-docs` / `/v3/api-docs.yaml` |
 | Snapshot versionado | [`openapi.yaml`](openapi.yaml) |
 | Coleção Postman | [`docs/ForwardService.postman_collection.json`](docs/ForwardService.postman_collection.json) |
 
 A especificação traz a descrição em pt-BR com o fluxo de autenticação e os usuários de demo, os
-servidores `http://localhost:8080` e `https://forward-api-java.fly.dev`, o esquema `bearerAuth`
-aplicado a todas as operações exceto as públicas e as respostas de erro reais de cada operação.
-Para regenerar o snapshot com a API rodando:
+servidores `https://forwardservice-api.onrender.com` e `http://localhost:8080`, o esquema
+`bearerAuth` aplicado a todas as operações exceto as públicas e as respostas de erro reais de
+cada operação. Para regenerar o snapshot com a API rodando:
 
 ```bash
 curl -s http://localhost:8080/v3/api-docs.yaml -o openapi.yaml
 ```
 
 Na coleção Postman, rode primeiro a pasta **01 Auth**: os logins gravam `token` (GESTOR),
-`adminToken` e `atendenteToken` nas variáveis da coleção.
+`adminToken` e `atendenteToken` nas variáveis da coleção. Para usar a produção, troque a variável
+`baseUrl` para `https://forwardservice-api.onrender.com`.
 
-## Deploy no Fly.io
+## Deploy no Render (Blueprint)
 
-App `forward-api-java`, região `gru`, configuração em [`fly.toml`](fly.toml). Como o Supabase foi
-excluído, o `fly.toml` usa `SPRING_PROFILES_ACTIVE=demo`: a máquina sobe o PostgreSQL embarcado
-com o seed (dados efêmeros, recriados a cada boot). A imagem usa Ubuntu Jammy (glibc, exigida
-pelos binários do PostgreSQL), usuário não root e JVM dimensionada para 512 MB.
+A infraestrutura está descrita em [`render.yaml`](render.yaml): um web service Docker no plano
+free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`), health check em
+`/health`, deploy automático a cada commit na `main`, perfil `prod`, `JWT_SECRET` e
+`INTERNAL_API_KEY` gerados pelo próprio Render e JVM ajustada para 512 MB.
 
-```bash
-fly auth login
-# Obrigatório: com ENV=production a API não sobe sem JWT_SECRET
-fly secrets set JWT_SECRET="$(openssl rand -base64 48)" --app forward-api-java
-# Opcional: chave para integrações (n8n)
-fly secrets set INTERNAL_API_KEY="$(openssl rand -hex 32)" --app forward-api-java
+1. Acesse **render.com** e clique em **Sign in with GitHub** (conta com acesso à organização
+   `fwd-ford`).
+2. No painel, **New** > **Blueprint**.
+3. Selecione o repositório **fwd-ford/forward-api-java** (branch `main`); o Render lê o
+   `render.yaml` e mostra o serviço `forwardservice-api`.
+4. Preencha as três variáveis marcadas como `sync: false`:
+   - `DATABASE_URL`: `jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require`
+   - `DATABASE_USER`: `postgres.ysewoopjgdpvnkfhffgy`
+   - `DATABASE_PASSWORD`: a senha do banco do projeto Supabase
+5. Clique em **Apply**. O primeiro build leva alguns minutos; acompanhe em **Logs**. Na primeira
+   inicialização o Flyway cria o baseline na versão 13, aplica V14 e V15 e o bootstrap de dados.
+6. Teste: `curl https://forwardservice-api.onrender.com/health` e depois o login com
+   `gestor@forward.dev` / `Forward@2026`.
 
-fly deploy --remote-only --app forward-api-java
-fly logs --app forward-api-java
-curl https://forward-api-java.fly.dev/health
-```
+Onde copiar a conexão do Supabase: **Supabase > Project Settings > Database > Connection string >
+Session pooler** (ou botão **Connect** no topo do projeto). O painel mostra uma URI
+`postgresql://postgres.ysewoopjgdpvnkfhffgy:[YOUR-PASSWORD]@aws-0-sa-east-1.pooler.supabase.com:5432/postgres`;
+para o JDBC, prefixe `jdbc:`, tire usuário e senha da URL (eles vão em `DATABASE_USER` e
+`DATABASE_PASSWORD`) e acrescente `?sslmode=require`. Confira o host exibido no painel do projeto.
 
-Para usar um PostgreSQL gerenciado, remova `SPRING_PROFILES_ACTIVE` do `fly.toml` e defina
-`DATABASE_URL`, `DATABASE_USER` e `DATABASE_PASSWORD` com `fly secrets set`; o Flyway cria o
-esquema na primeira inicialização.
+Notas importantes:
+
+- Use o **Session pooler (porta 5432, IPv4)**. O host direto `db.<ref>.supabase.co` é só IPv6 e o
+  Render não tem saída IPv6. **Não use o Transaction pooler (6543)**: ele quebra prepared
+  statements e o lock do Flyway (se for inevitável, acrescente `prepareThreshold=0` à URL).
+- A autorização é feita pela API. Ela conecta como dono das tabelas, por isso o RLS do Supabase
+  não se aplica a ela; a tabela `app_users` tem RLS habilitado sem políticas e sem grants para
+  `anon`/`authenticated`, então não fica exposta na Data API do Supabase.
+- Plano free: o serviço hiberna após 15 minutos sem tráfego; a primeira requisição depois disso
+  leva cerca de 1 minuto (cold start). Abra `/health` antes de uma demonstração.
+- O `JWT_SECRET` gerado pelo Render é estável entre deploys; tokens continuam válidos após
+  reinícios até expirarem (60 min).
 
 ## Solução de problemas
 
@@ -410,10 +441,13 @@ esquema na primeira inicialização.
 | PostgreSQL embarcado não inicia no Windows | O PostgreSQL recusa rodar como Administrador. Execute o terminal como usuário comum. |
 | Processos `postgres.exe` sobrando | Ao matar a JVM à força o banco embarcado não é encerrado. Finalize os processos cujo caminho contém `embedded-pg` (Gerenciador de Tarefas ou `taskkill`). |
 | 401 `AUTH_TOKEN_INVALID` depois de reiniciar o demo | Sem `JWT_SECRET` a chave muda a cada boot. Faça login de novo ou defina `JWT_SECRET`. |
-| 429 no login | Limite de 5 tentativas por minuto por IP; aguarde o tempo do header `Retry-After`. |
+| 429 no login | Limite de tentativas por minuto por IP; aguarde o tempo do header `Retry-After`. |
+| API não sobe no Render: `JWT_SECRET is required` | O perfil prod exige a variável; confira se o Blueprint gerou `JWT_SECRET`. |
+| `Connection refused`/timeout para o Supabase | Use o Session pooler (IPv4, 5432) e `sslmode=require`; o host direto é IPv6. |
+| `prepared statement "S_1" already exists` | URL do Transaction pooler (6543); troque pelo Session pooler (5432). |
+| Primeira resposta lenta no Render | Cold start do plano free (cerca de 1 min após 15 min parado). |
 | Logs em JSON no demo | Comportamento esperado; use `LOG_FORMAT=CONSOLE` para logs legíveis. |
-| Primeira execução lenta | Download do Maven, das dependências e extração dos binários do PostgreSQL (uma vez). |
-| Docker em Mac com Apple Silicon | Construa com `docker build --platform linux/amd64 .` (o JAR gerado no container inclui os binários Linux x86_64). |
+| Primeira execução local lenta | Download do Maven, das dependências e extração dos binários do PostgreSQL (uma vez). |
 | `spotless:check` falha no Windows | Rode `./mvnw spotless:apply` antes do commit (fins de linha LF). |
 
 ## Estrutura do projeto
@@ -427,16 +461,19 @@ src/main/java/com/fwdford/forwardapi/
   security/      JwtService, JwtAuthenticationFilter, SecurityConfig, RateLimitFilter, Role
   service/       Regras de negócio, @PreAuthorize, escopo por concessionária, auditoria
   soap/          Endpoint Spring WS GetVehicle
+  util/          LogSanitizer (log injection), SecureXml (XXE)
   web/           Controllers REST, DTOs (web/dto), filtros de request id e headers, CORS
 src/main/resources/
   db/migration/  Flyway V1..V15 (V1..V13 = forward-infra, V14 app_users, V15 notas/chave natural)
-  db/seed/       R__seed_demo_data.sql (somente perfis demo, seed e test)
+  db/bootstrap/  R__bootstrap_demo_data.sql (perfis prod, demo e test; idempotente)
+  db/seed/       R__seed_demo_data.sql (usuários extras, somente demo e test)
   application*.yml, logback-spring.xml, xsd/vehicles.xsd
-src/test/java/.../it/   Testes de integração HTTP (MockMvc e Tomcat real)
+src/test/java/.../it/   Testes de integração (MockMvc, Tomcat real, migração de produção)
 docs/                   ARQUITETURA.md, diagramas (Mermaid + PNG), Postman, evidências
+render.yaml             Blueprint do Render
 scripts/smoke-demo.sh   Smoke test da API em execução
 ```
 
 CI (GitHub Actions, workflows reutilizáveis de `fwd-ford/.github`): Spotless, Checkstyle,
-SpotBugs + FindSecBugs, testes, Trivy (filesystem) e gitleaks; pipeline DevSecOps
-(CodeQL, Semgrep, SBOM, imagem) em modo relatório.
+SpotBugs + FindSecBugs, testes, Trivy (filesystem) e gitleaks; pipeline DevSecOps (CodeQL,
+Semgrep, SBOM, imagem Docker) em modo relatório.
