@@ -18,7 +18,7 @@ Go + Fiber implementation that was archived at
 
 - Java 17 (Eclipse Temurin)
 - Spring Boot 3.5 (Web, Web Services / SOAP, Security, Validation, JDBC, Actuator)
-- PostgreSQL via HikariCP; schema managed by Flyway (`db/migration` V1..V15, `db/bootstrap` idempotent demo users/data, `db/seed` demo/test only)
+- PostgreSQL via HikariCP; schema managed by Flyway (`db/migration` V1..V16, `db/bootstrap` idempotent demo users/data, `db/seed` demo/test only)
 - Zonky embedded PostgreSQL 16 for the `demo` profile and the test suite (no Docker needed)
 - Spring Data JDBC with `NamedParameterJdbcTemplate` (raw SQL, parameterized)
 - Bucket4j: in-memory sliding-window rate limiting
@@ -53,8 +53,8 @@ Go + Fiber implementation that was archived at
 
 ### Auth
 
-- `POST /api/v1/auth/login` (public) checks BCrypt passwords in `app_users` and issues an HS256 JWT (`iss` forward-api, `aud` forward-app, `sub`, `role`, `dealer_id`, `exp`, `jti`). `JWT_SECRET` is mandatory in production (startup fails without it).
-- `JwtAuthenticationFilter` validates signature, expiry (30 s skew), issuer and audience, then puts an `AuthenticatedUser` with `ROLE_<ROLE>` in the `SecurityContext`.
+- `POST /api/v1/auth/login` (public) checks BCrypt passwords in `app_users` and issues an HS256 JWT (`iss` forward-api, `aud` forward-app, `sub`, `role`, `dealer_id`, `token_version`, `exp`, `jti`). `JWT_SECRET` is mandatory in production (startup fails without it).
+- `JwtAuthenticationFilter` validates signature, expiry (30 s skew), issuer and audience, then compares the claims with the user's current row in `app_users` (exists, active, role, dealer_id, token_version; `UserStateCache`, 30 s TTL) and only then puts an `AuthenticatedUser` with `ROLE_<ROLE>` in the `SecurityContext`. Mismatch = 401 `AUTH_TOKEN_REVOKED`. Admin writes to role/active/dealer/password bump `token_version` and must call `UserStateCache.invalidateAfterCommit`.
 - Roles: ATENDENTE, GESTOR, ADMIN (plus SERVICE for `X-API-Key`, compared in constant time). Enforce them in `SecurityConfig` and with `@PreAuthorize` in services; non-admin data access is always scoped by the token's `dealer_id` (403 `ACCESS_OTHER_DEALER`).
 - Never trust client-side role claims without server validation; Supabase RLS does not apply to the API connection, so authorization lives here.
 

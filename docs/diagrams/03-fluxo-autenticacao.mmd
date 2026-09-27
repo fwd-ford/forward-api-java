@@ -20,9 +20,10 @@ sequenceDiagram
   U->>F: GET /api/v1/leads/{id} com Authorization Bearer JWT
   F->>J: repassa a requisição
   J->>J: assinatura, alg HS256, exp com 30 s de tolerância, iss, aud, claims
-  J->>Z: SecurityContext = AuthenticatedUser + ROLE_ATENDENTE
-  alt token ausente, expirado ou inválido
-    Z-->>U: 401 problem+json (AUTH_REQUIRED, AUTH_TOKEN_EXPIRED, AUTH_TOKEN_INVALID)
+  J->>DB: estado atual do usuário (cache 30 s): ativo, role, dealer_id, token_version
+  J->>Z: SecurityContext = AuthenticatedUser + ROLE_ATENDENTE (se tudo confere)
+  alt token ausente, expirado, inválido ou revogado
+    Z-->>U: 401 problem+json (AUTH_REQUIRED, AUTH_TOKEN_EXPIRED, AUTH_TOKEN_INVALID, AUTH_TOKEN_REVOKED)
   end
   Z->>C: autenticado
   C->>S: get(id, principal)

@@ -28,10 +28,10 @@
 | Critério (peso) | O que foi feito | Evidência |
 |---|---|---|
 | **Arquitetura da solução (20%)** | Diagrama de componentes da solução (app, web, n8n, ML, API, PostgreSQL), camadas internas da API (controller → service → repository), fluxo de autenticação/autorização e cadeia de filtros. Responsabilidades separadas em pacotes `web`, `service`, `repository`, `security`, `error`, `soap` | `docs/ARQUITETURA.md`, `docs/img/*.png` (abaixo) |
-| **Autenticação e autorização (20%)** | Spring Security stateless com filtro JWT próprio. Endpoints públicos (login, health, Swagger, WSDL) e protegidos (todo o resto). Perfis **ATENDENTE**, **GESTOR** e **ADMIN** aplicados por URL (`SecurityConfig`) e por método (`@PreAuthorize`), mais escopo por concessionária. Respostas 401/403 em RFC 7807 | `security/SecurityConfig.java`, `service/*`, `SecurityIT` (23 testes) |
-| **JWT (15%)** | Geração no `POST /api/v1/auth/login`. Token HS256 com `sub`, `role`, `dealer_id`, `name`, `email`, `iss`, `aud`, `iat`, `exp` (60 min, configurável) e `jti`. A validação confere assinatura, expiração (30 s de tolerância), emissor e audiência. Sem segredo forte, a API não sobe em produção. As *claims* guiam a autorização | `security/JwtService.java`, `JwtServiceTest` (18), `AuthIT` (12) |
+| **Autenticação e autorização (20%)** | Spring Security stateless com filtro JWT próprio. Endpoints públicos (login, health, Swagger, WSDL) e protegidos (todo o resto). Perfis **ATENDENTE**, **GESTOR** e **ADMIN** aplicados por URL (`SecurityConfig`) e por método (`@PreAuthorize`), mais escopo por concessionária. Acesso revogado na hora quando o usuário é desativado, excluído, rebaixado ou muda de concessionária (401 `AUTH_TOKEN_REVOKED`). Respostas 401/403 em RFC 7807 | `security/SecurityConfig.java`, `service/*`, `SecurityIT` (23 testes), `TokenRevocationIT` (8) |
+| **JWT (15%)** | Geração no `POST /api/v1/auth/login`. Token HS256 com `sub`, `role`, `dealer_id`, `name`, `email`, `token_version`, `iss`, `aud`, `iat`, `exp` (60 min, configurável) e `jti`. A validação confere assinatura, expiração (30 s de tolerância), emissor, audiência e, a cada requisição, o estado atual do usuário (ativo, perfil, concessionária e `token_version`). Sem segredo forte, a API não sobe em produção. As *claims* guiam a autorização | `security/JwtService.java`, `JwtServiceTest` (20), `AuthIT` (12) |
 | **Maturidade REST nível 2 (20%)** | Recursos por URI e verbos com semântica HTTP (GET, POST, PUT, PATCH, DELETE). Códigos de status: 201 com `Location`, 204, 400, 401, 403, 404, 405, 409, 415, 422 e 429. Coleções com `X-Total-Count` e deprecação sinalizada por header | Tabela de endpoints abaixo; `LeadIT`, `ServiceEventIT`, `UserIT`, `ErrorHandlingIT` |
-| **Testes automatizados (15%)** | **192 testes, 0 falhas** (102 unitários e 90 de integração HTTP contra PostgreSQL 16 embarcado). Cobrem sucesso, erro e acesso não autorizado (401/403). Cobertura de linhas de **91,8%** (JaCoCo). A CI roda em todo PR | `docs/evidencias/testes-2026-09-27.txt`, `jacoco-resumo.md`, `surefire-report/` |
+| **Testes automatizados (15%)** | **217 testes, 0 falhas** (119 unitários e 98 de integração HTTP contra PostgreSQL 16 embarcado). Cobrem sucesso, erro, acesso não autorizado (401/403) e revogação de tokens. Cobertura de linhas de **92,4%** (JaCoCo). A CI roda em todo PR | `docs/evidencias/testes-2026-09-27.txt`, `jacoco-resumo.md`, `surefire-report/` |
 | **Documentação e erros (10%)** | OpenAPI 3 com esquema *bearer*, Swagger público, README em pt-BR com execução passo a passo, coleção Postman e erros padronizados RFC 7807 (`application/problem+json` com `code` e `request_id`) | `openapi.yaml`, README, `error/GlobalExceptionHandler.java` |
 
 ## Arquitetura
@@ -117,20 +117,21 @@ Máquina de estados do lead: `new → assigned | contacted | lost`, `assigned �
 
 ## Testes automatizados e evidências
 
-Comando: `./mvnw -B -ntp clean verify -P quality`. Resultado: **192 testes, 0 falhas, 0 erros**, Checkstyle sem violações, SpotBugs e FindSecBugs sem achados, BUILD SUCCESS.
+Comando: `./mvnw -B -ntp clean verify -P quality`. Resultado: **217 testes, 0 falhas, 0 erros**, Checkstyle sem violações, SpotBugs e FindSecBugs sem achados, BUILD SUCCESS.
 
 | Suíte | Tipo | Testes | O que cobre |
 |---|---|---|---|
 | `SecurityIT` | integração HTTP | 23 | Sem token, token expirado, assinatura/emissor/audiência inválidos (401); perfil e concessionária (403); rotas públicas |
-| `JwtServiceTest` | unitário | 18 | Emissão e validação, expiração, adulteração, claims obrigatórias, segredo fraco |
+| `JwtServiceTest` | unitário | 20 | Emissão e validação, expiração, adulteração, claims obrigatórias (incl. `token_version`), segredo fraco |
 | `LeadIT` | integração HTTP | 16 | Escopo, 200/404, PATCH, transição inválida (409), status inválido (400) |
 | `AuthIT` | integração HTTP | 12 | Login 200, senha errada ou usuário inexistente (401 idêntico), desativado, 400, rate limit |
 | `UserIT` | integração HTTP | 11 | CRUD admin: 201 + Location, duplicado (409), 204, auto-exclusão (409) |
 | `ServiceEventIT` | integração HTTP | 10 | POST 201 → GET → PUT → DELETE 204 → 404; 422 |
 | `ErrorHandlingIT` | integração HTTP | 9 | 405, 415, JSON malformado: tudo em `problem+json` |
-| Demais (11 suítes) | unitário/integração | 93 | Serviços, validações, filtros, SOAP (XXE bloqueado), sanitização de log, migração de produção |
+| `TokenRevocationIT` | integração HTTP | 8 | Token antigo recusado (401 `AUTH_TOKEN_REVOKED`) logo após desativar, rebaixar ADMIN para GESTOR, mover de concessionária, redefinir senha ou excluir o usuário |
+| Demais (12 suítes) | unitário/integração | 108 | Serviços, validações, filtros, cache de revogação (TTL), SOAP (XXE bloqueado), sanitização de log, migração de produção |
 
-Cobertura (JaCoCo): **91,8% das linhas** e 72,1% dos branches no total; `security` 93,9%, `service` 95,6% e `web` 98,4% das linhas.
+Cobertura (JaCoCo): **92,4% das linhas** e 76,0% dos branches no total; `security` 94,9%, `service` 96,3% e `web` 98,4% das linhas.
 
 **Validação de ponta a ponta:** o APK Android (forward-mobile) foi testado contra esta API: login JWT, listagem restrita à concessionária, `PATCH` de status persistido e perfil exibindo o papel do token.
 

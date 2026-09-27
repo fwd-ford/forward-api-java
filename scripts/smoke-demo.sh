@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Smoke test of a running ForwardService API (demo profile): public endpoints, login,
 # JWT on protected resources, dealer scoping, PATCH state machine, CRUD status codes,
-# 401/403/409/422 and SOAP. Tokens are redacted in the output.
+# 401/403/409/422, token revocation and SOAP. Tokens are redacted in the output.
+# Run it against a fresh demo instance: it deactivates atendente@forward.dev at the end.
 #
 # Usage: scripts/smoke-demo.sh [base_url]      (default http://localhost:8080)
 # Requires: curl and python3 (or python).
@@ -104,6 +105,10 @@ if [ -n "$EVENT_ID" ]; then
 fi
 call "Metodo nao suportado -> 405" DELETE /api/v1/leads ADMIN_TOKEN
 call "Score do cliente (sub-recurso)" GET /api/v1/customers/11111111-1111-1111-1111-111111111001/score ATENDENTE_TOKEN
+
+call "ATENDENTE com token valido" GET /api/v1/me ATENDENTE_TOKEN
+call "ADMIN desativa o atendente -> 200 (token_version incrementado)" PATCH   /api/v1/users/ad000000-0000-4000-8000-000000000003 ADMIN_TOKEN '{"active":false}'
+call "Mesmo token do atendente -> 401 AUTH_TOKEN_REVOKED" GET /api/v1/me ATENDENTE_TOKEN
 
 echo "### SOAP GetVehicle com token"
 echo "\$ curl -X POST $BASE/soap/vehicles -H 'Content-Type: text/xml' -H 'Authorization: Bearer \$ADMIN_TOKEN' -d '<GetVehicleRequest>...'"

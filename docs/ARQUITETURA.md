@@ -26,7 +26,7 @@ renderizados em PNG pela API do kroki.io.
 | **forward-ml** (Python + XGBoost) | Calcula o score de churn e gera leads em lote. | Grava `churn_scores` e `leads` no PostgreSQL. |
 | **forward-api-java** (este repositório) | Única porta de entrada dos dados: autenticação, autorização por perfil e por concessionária, regras de negócio (máquina de estados de leads, eventos de serviço), auditoria, erros padronizados. | Servidor. |
 | **Render** | Hospedagem do container (plano free), TLS na borda, health check em `/health`, deploy automático pela `main` (Blueprint `render.yaml`). | Proxy reverso com `X-Forwarded-For`/`X-Forwarded-Proto`. |
-| **Supabase PostgreSQL** | Fonte da verdade em produção (sa-east-1). Esquema do `forward-infra` (001 a 013) + Flyway V14 e V15. | JDBC com TLS pelo Session pooler (IPv4, porta 5432). |
+| **Supabase PostgreSQL** | Fonte da verdade em produção (sa-east-1). Esquema do `forward-infra` (001 a 013) + Flyway V14 a V16. | JDBC com TLS pelo Session pooler (IPv4, porta 5432). |
 | **PostgreSQL 16 embarcado** | Banco efêmero dos perfis `demo` e `test`. | JDBC local. |
 
 ## 2. Camadas internas da API
@@ -54,9 +54,9 @@ renderizados em PNG pela API do kroki.io.
 |---|---|
 | Algoritmo | HS256 (HMAC-SHA256). Tokens com outro `alg` ou sem assinatura são recusados. |
 | Segredo | `JWT_SECRET`, mínimo 32 bytes. Com `ENV=production` (padrão do perfil `prod`) a aplicação não sobe sem ele; no Render ele é gerado pelo Blueprint. Fora de produção, sem segredo, a API gera uma chave aleatória por boot e registra um WARN. |
-| Claims | `iss=forward-api`, `aud=forward-app`, `sub` (UUID do usuário), `email`, `name`, `role` (ATENDENTE, GESTOR ou ADMIN), `dealer_id` (só perfis com concessionária), `iat`, `nbf`, `exp`, `jti` aleatório. |
+| Claims | `iss=forward-api`, `aud=forward-app`, `sub` (UUID do usuário), `email`, `name`, `role` (ATENDENTE, GESTOR ou ADMIN), `dealer_id` (só perfis com concessionária), `token_version`, `iat`, `nbf`, `exp`, `jti` aleatório. |
 | Expiração | `JWT_EXPIRATION_MINUTES` (padrão 60). Tolerância de relógio de 30 s. |
-| Validação | Assinatura, algoritmo, `exp`/`nbf`, `iss`, `aud`, presença e formato de `sub`, `jti`, `email`, `name`, `role`, `dealer_id` obrigatório para ATENDENTE/GESTOR. |
+| Validação | Assinatura, algoritmo, `exp`/`nbf`, `iss`, `aud`, presença e formato de `sub`, `jti`, `email`, `name`, `role`, `token_version`, `dealer_id` obrigatório para ATENDENTE/GESTOR. Depois, comparação com o estado atual do usuário (revogação, abaixo). |
 | Uso das claims | `role` vira a authority `ROLE_<ROLE>` (regras de URL e `@PreAuthorize`); `dealer_id` define o escopo de dados; `sub` identifica o autor no `audit_log`. |
 
 ### Login
@@ -75,10 +75,22 @@ renderizados em PNG pela API do kroki.io.
 
 O `JwtAuthenticationFilter` separa duas etapas: `resolveCredentials` verifica a credencial
 enviada (digest SHA-256 da `X-API-Key` comparado em tempo constante com `INTERNAL_API_KEY`, ou
-JWT validado pelo `JwtService`) e devolve um principal verificado ou o motivo da falha; só um
-principal verificado é gravado no `SecurityContext`. Qual header chegou apenas escolhe o
-verificador, nunca concede acesso por si só. Rotas públicas são decididas pelos request matchers
-do Spring Security, não por comparação manual de strings.
+JWT validado pelo `JwtService` e conferido com o estado atual do usuário) e devolve um principal
+verificado ou o motivo da falha; só um principal verificado é gravado no `SecurityContext`.
+Qual header chegou apenas escolhe o verificador, nunca concede acesso por si só. Rotas públicas
+são decididas pelos request matchers do Spring Security, não por comparação manual de strings.
+
+### Revogação de tokens
+
+Depois de validar o JWT, o filtro compara as claims com o estado atual do usuário em `app_users`
+(existe, `active`, `role`, `dealer_id` e `token_version`), lido pelo `UserStateCache` (cache em
+memória de 30 s, configurável em `JWT_USER_STATE_CACHE_TTL`). Se qualquer item diverge, a
+requisição segue sem autenticação e a rota protegida responde **401 `AUTH_TOKEN_REVOKED`**. O
+ADMIN incrementa o `token_version` (migration V16) em todo `PATCH` que envia `role`, `active`,
+`dealer_id` ou `password`, e o `DELETE` remove o usuário; nos dois casos o cache é invalidado
+imediatamente (e de novo após o commit). Assim, um usuário desativado, excluído, rebaixado ou
+movido de concessionária perde o acesso na próxima requisição, e não só quando o token expira.
+O caminho `X-API-Key` (SERVICE) não consulta `app_users`.
 
 ## 4. Cadeia de filtros
 
@@ -132,10 +144,10 @@ Supabase nunca exponha os hashes.
 
 | Perfil | Banco | Migrations | Dados | Uso |
 |---|---|---|---|---|
-| `prod` | PostgreSQL de `DATABASE_URL` (Supabase) | baseline 13, depois V14 e V15 (banco vazio: V1 a V15) | bootstrap | Render |
-| `demo` | PostgreSQL 16 embarcado (Zonky), efêmero | V1 a V15 | bootstrap + seed | demonstração local |
-| `test` | PostgreSQL 16 embarcado | V1 a V15 | bootstrap + seed | testes automatizados |
-| (padrão) | PostgreSQL de `DATABASE_URL` | V1 a V15 | nenhum | banco genérico |
+| `prod` | PostgreSQL de `DATABASE_URL` (Supabase) | baseline 13, depois V14 a V16 (banco vazio: V1 a V16) | bootstrap | Render |
+| `demo` | PostgreSQL 16 embarcado (Zonky), efêmero | V1 a V16 | bootstrap + seed | demonstração local |
+| `test` | PostgreSQL 16 embarcado | V1 a V16 | bootstrap + seed | testes automatizados |
+| (padrão) | PostgreSQL de `DATABASE_URL` | V1 a V16 | nenhum | banco genérico |
 
 - V1 a V13 são cópias literais das migrations do `forward-infra` (dealers, customers, vehicles,
   service_orders, churn_scores, leads, communications, lead_outcomes, audit_log, RLS, triggers,
@@ -145,6 +157,7 @@ Supabase nunca exponha os hashes.
   obrigatório, concessionária obrigatória para ATENDENTE/GESTOR, RLS sem políticas).
 - V15 adiciona `leads.notes` (`ADD COLUMN IF NOT EXISTS`) e a chave natural de `service_orders`,
   criada somente se não houver duplicatas no banco existente.
+- V16 adiciona `app_users.token_version` (padrão 0), usado na revogação de tokens.
 - `db/bootstrap/R__bootstrap_demo_data.sql` (perfis `prod`, `demo` e `test`) é idempotente e
   seguro sobre o seed antigo do `forward-infra`: referencia concessionárias pelo código, usa
   `ON CONFLICT DO NOTHING` e só cria score de churn para clientes sem score atual. Garante 10
@@ -153,7 +166,7 @@ Supabase nunca exponha os hashes.
 - `db/seed/R__seed_demo_data.sql` (somente `demo` e `test`) acrescenta `gestor2@forward.dev` e o
   usuário desativado `inativo@forward.dev`.
 - O cenário do Supabase é reproduzido no teste `ProdMigrationIT`: esquema criado sem histórico do
-  Flyway + seed antigo, depois a inicialização de produção (baseline, V14, V15, bootstrap) e uma
+  Flyway + seed antigo, depois a inicialização de produção (baseline, V14 a V16, bootstrap) e uma
   segunda execução para provar a idempotência.
 
 ## 7. Decisões de projeto
@@ -172,3 +185,4 @@ Supabase nunca exponha os hashes.
 | Auditoria na mesma transação | A alteração do lead e o registro no `audit_log` são confirmados (ou desfeitos) juntos. |
 | Erros RFC 7807 com `code` estável | O cliente decide pelo `code` (ex.: `LEAD_INVALID_TRANSITION`) e exibe o `detail` em pt-BR. |
 | Hashes de senha calculados no banco | O repositório não contém hashes (scanners de segredo) e cada ambiente gera o seu sal. |
+| Revogação por `token_version` + cache curto | Mantém a API stateless (sem lista de tokens) e ainda derruba na hora o acesso de quem foi desativado, excluído, rebaixado ou mudou de concessionária; o cache de 30 s evita uma consulta ao banco por requisição. |

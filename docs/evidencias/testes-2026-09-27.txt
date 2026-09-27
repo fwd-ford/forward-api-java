@@ -2,44 +2,46 @@ Evidência de execução dos testes automatizados - forward-api-java (Sprint 3)
 ==============================================================================
 
 Comando:   ./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality
-Commit:    feat/sprint3-soa-jwt-rbac @ 039630d
+Commit:    feat/sprint3-soa-jwt-rbac @ b333df0
 Ambiente:  Windows 11, Java 17.0.18 (Temurin), Maven 3.9.6 (wrapper),
            PostgreSQL 16.15 embarcado (Zonky) com migrations Flyway V1..V15 e seed
 Relatórios: target/surefire-reports (XML/TXT), target/reports/surefire.html,
             target/site/jacoco/index.html (cópias em docs/evidencias)
 
-Resultado: 192 testes, 0 falhas, 0 erros, 0 ignorados (102 unitários + 90 de integração HTTP)
+Resultado: 217 testes, 0 falhas, 0 erros, 0 ignorados (119 unitários + 98 de integração HTTP)
 
 Classe                       Tipo              Testes Falhas  Erros Ignor.  Tempo(s)
 ------------------------------------------------------------------------------------
-ApiExceptionTest             unitário               9      0      0      0      0.21
-AuthIT                       integração HTTP       12      0      0      0     13.67
-ErrorHandlingIT              integração HTTP        9      0      0      0      0.15
-HttpServerIT                 integração HTTP        7      0      0      0      5.68
-LeadIT                       integração HTTP       16      0      0      0      0.35
-ProdMigrationIT              integração HTTP        2      0      0      0      6.08
-SecurityIT                   integração HTTP       23      0      0      0      0.91
-ServiceEventIT               integração HTTP       10      0      0      0      0.17
+ApiExceptionTest             unitário               9      0      0      0      0.20
+AuthIT                       integração HTTP       12      0      0      0     14.28
+ErrorHandlingIT              integração HTTP        9      0      0      0      0.14
+HttpServerIT                 integração HTTP        7      0      0      0      5.73
+LeadIT                       integração HTTP       16      0      0      0      0.37
+ProdMigrationIT              integração HTTP        2      0      0      0      6.45
+SecurityIT                   integração HTTP       23      0      0      0      1.08
+ServiceEventIT               integração HTTP       10      0      0      0      0.22
+TokenRevocationIT            integração HTTP        8      0      0      0      1.02
 UserIT                       integração HTTP       11      0      0      0      0.33
 HmacValidatorTest            unitário              14      0      0      0      0.02
-JwtAuthenticationFilterTest  unitário               9      0      0      0      0.01
-JwtServiceTest               unitário              18      0      0      0      0.04
-CustomerServiceTest          unitário              10      0      0      0      0.47
-ScoreServiceTest             unitário               6      0      0      0      0.09
+JwtAuthenticationFilterTest  unitário              16      0      0      0      0.03
+JwtServiceTest               unitário              20      0      0      0      0.04
+UserStateCacheTest           unitário               8      0      0      0      0.02
+CustomerServiceTest          unitário              10      0      0      0      0.50
+ScoreServiceTest             unitário               6      0      0      0      0.10
 ServiceEventServiceTest      unitário              10      0      0      0      0.42
 LogSanitizerTest             unitário               5      0      0      0      0.01
 SecureXmlTest                unitário               4      0      0      0      0.03
 ValidationsTest              unitário              17      0      0      0      0.03
 ------------------------------------------------------------------------------------
-TOTAL                                             192      0      0      0
+TOTAL                                             217      0      0      0
 
 Linhas finais do log do Maven:
-  [INFO] Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
+  [INFO] Tests run: 217, Failures: 0, Errors: 0, Skipped: 0
   [INFO] You have 0 Checkstyle violations.
   [INFO] BugInstance size is 0
   [INFO] BUILD SUCCESS
-  [INFO] Total time:  55.199 s
-  [INFO] Finished at: 2026-09-27T04:22:11-03:00
+  [INFO] Total time:  59.374 s
+  [INFO] Finished at: 2026-09-27T05:11:06-03:00
 
 Testes executados (método e cenário):
   [OK  ] ApiExceptionTest.conflict_and_unprocessable_use_409_and_422
@@ -130,6 +132,14 @@ Testes executados (método e cenário):
   [OK  ] ServiceEventIT.gestor_other_dealer_is_403  (GESTOR não registra evento para outra concessionária: 403)
   [OK  ] ServiceEventIT.invalid_body_is_400  (POST com campos inválidos: 400 com erros por campo)
   [OK  ] ServiceEventIT.duplicate_is_409  (POST duplicado (mesmo VIN, concessionária, tipo e data): 409)
+  [OK  ] TokenRevocationIT.dealer_move_revokes_existing_token  (usuário movido para outra concessionária: token antigo 401, novo token vê a nova)
+  [OK  ] TokenRevocationIT.demotion_revokes_existing_admin_token  (ADMIN rebaixado a GESTOR perde /users: token antigo 401, novo login 403)
+  [OK  ] TokenRevocationIT.same_state_security_edit_still_revokes  (PATCH active=true num usuário ativo força novo login (token_version incrementado))
+  [OK  ] TokenRevocationIT.password_reset_revokes_existing_token  (redefinição de senha pelo ADMIN revoga os tokens do usuário)
+  [OK  ] TokenRevocationIT.deactivation_revokes_existing_token  (usuário desativado: o token antigo deixa de valer na hora (401 AUTH_TOKEN_REVOKED))
+  [OK  ] TokenRevocationIT.deletion_revokes_existing_token  (usuário excluído: token antigo 401 AUTH_TOKEN_REVOKED)
+  [OK  ] TokenRevocationIT.service_api_key_is_unaffected  (chamadas com X-API-Key (perfil SERVICE) não dependem de app_users)
+  [OK  ] TokenRevocationIT.name_only_edit_keeps_token_valid  (alterar só o nome não revoga o token)
   [OK  ] UserIT.deactivate_user_blocks_login  (PATCH desativa usuário; login passa a responder 401 AUTH_USER_DISABLED)
   [OK  ] UserIT.self_modification_is_409  (ADMIN não altera o próprio perfil nem se desativa: 409)
   [OK  ] UserIT.delete_user  (DELETE 204 e depois GET 404)
@@ -155,15 +165,23 @@ Testes executados (método e cenário):
   [OK  ] HmacValidatorTest.verifyRejectsFutureTimestampBeyondSkew
   [OK  ] HmacValidatorTest.signIsDeterministic
   [OK  ] HmacValidatorTest.verifyRejectsBitFlippedSignature
+  [OK  ] JwtAuthenticationFilterTest.valid_bearer_token_of_a_current_user_yields_the_principal
   [OK  ] JwtAuthenticationFilterTest.expired_token_reports_expired
+  [OK  ] JwtAuthenticationFilterTest.token_with_an_outdated_role_is_revoked
   [OK  ] JwtAuthenticationFilterTest.no_credentials_is_anonymous_without_failure
+  [OK  ] JwtAuthenticationFilterTest.revocation_reasons
+  [OK  ] JwtAuthenticationFilterTest.token_with_an_outdated_dealer_is_revoked
   [OK  ] JwtAuthenticationFilterTest.api_key_is_rejected_when_not_configured
   [OK  ] JwtAuthenticationFilterTest.other_schemes_and_empty_tokens_are_invalid
   [OK  ] JwtAuthenticationFilterTest.bearer_scheme_is_case_insensitive
-  [OK  ] JwtAuthenticationFilterTest.matching_api_key_yields_the_service_principal
-  [OK  ] JwtAuthenticationFilterTest.valid_bearer_token_yields_the_principal
+  [OK  ] JwtAuthenticationFilterTest.token_of_a_deleted_user_is_revoked
+  [OK  ] JwtAuthenticationFilterTest.matching_api_key_yields_the_service_principal_without_user_lookup
+  [OK  ] JwtAuthenticationFilterTest.token_of_a_deactivated_user_is_revoked
+  [OK  ] JwtAuthenticationFilterTest.token_issued_after_the_change_is_accepted
+  [OK  ] JwtAuthenticationFilterTest.token_with_an_outdated_version_is_revoked_even_if_role_and_dealer_match
   [OK  ] JwtAuthenticationFilterTest.bearer_token_extraction
   [OK  ] JwtAuthenticationFilterTest.wrong_api_key_is_rejected_even_with_a_valid_token
+  [OK  ] JwtServiceTest.missing_or_malformed_token_version_is_rejected
   [OK  ] JwtServiceTest.unsigned_token_is_rejected
   [OK  ] JwtServiceTest.wrong_issuer_is_rejected
   [OK  ] JwtServiceTest.admin_token_has_no_dealer_claim
@@ -180,8 +198,17 @@ Testes executados (método e cenário):
   [OK  ] JwtServiceTest.each_token_gets_a_unique_jti
   [OK  ] JwtServiceTest.short_secret_fails_fast_in_any_environment
   [OK  ] JwtServiceTest.token_signed_with_another_secret_is_rejected
+  [OK  ] JwtServiceTest.token_version_round_trips
   [OK  ] JwtServiceTest.garbage_and_empty_tokens_are_rejected
   [OK  ] JwtServiceTest.invalid_expiration_configuration_fails_fast
+  [OK  ] UserStateCacheTest.serves_from_cache_within_ttl
+  [OK  ] UserStateCacheTest.deleted_user_is_cached_as_absent
+  [OK  ] UserStateCacheTest.reloads_after_ttl_expires
+  [OK  ] UserStateCacheTest.invalidate_forces_a_fresh_read
+  [OK  ] UserStateCacheTest.memory_guard_resets_the_cache_when_full
+  [OK  ] UserStateCacheTest.invalidate_after_commit_also_evicts_when_the_transaction_commits
+  [OK  ] UserStateCacheTest.negative_ttl_is_rejected
+  [OK  ] UserStateCacheTest.zero_ttl_always_reads_the_database
   [OK  ] CustomerServiceTest.admin_reads_any_customer_without_scope_check
   [OK  ] CustomerServiceTest.missing_customer_yields_not_found_before_scope_check
   [OK  ] CustomerServiceTest.gestor_reads_customer_linked_to_own_dealer

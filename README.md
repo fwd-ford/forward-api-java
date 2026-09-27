@@ -20,8 +20,8 @@ API REST e SOAP do **ForwardService**, plataforma de retenção de clientes da r
 - **REST nível 2**: recursos, verbos HTTP corretos (GET, POST, PUT, PATCH, DELETE), status
   coerentes (200, 201 + `Location`, 204, 400, 401, 403, 404, 405, 409, 415, 422, 429).
 - **Erros padronizados** em RFC 7807 (`application/problem+json`) com mensagens em pt-BR.
-- **192 testes automatizados** (102 unitários e 90 de integração contra PostgreSQL real
-  embarcado), cobertura de linhas em torno de 90% (JaCoCo).
+- **217 testes automatizados** (119 unitários e 98 de integração contra PostgreSQL real
+  embarcado), cobertura de linhas em torno de 92% (JaCoCo).
 
 ## Sumário
 
@@ -57,7 +57,7 @@ sistemas SOAP. Detalhes, fluxo de autenticação, cadeia de filtros e decisões 
 | Tema | Tecnologia |
 |---|---|
 | Linguagem e framework | Java 17, Spring Boot 3.5.14 (Web, Security, Validation, JDBC, Web Services, Actuator) |
-| Banco | PostgreSQL (Supabase em produção); Flyway V1 a V15 + bootstrap; PostgreSQL 16 embarcado (Zonky) nos perfis `demo` e `test` |
+| Banco | PostgreSQL (Supabase em produção); Flyway V1 a V16 + bootstrap; PostgreSQL 16 embarcado (Zonky) nos perfis `demo` e `test` |
 | Acesso a dados | `NamedParameterJdbcTemplate` com SQL parametrizado (sem ORM) |
 | Autenticação | JWT HS256 emitido pela própria API (JJWT 0.12), senhas BCrypt |
 | Autorização | Spring Security (regras de URL + `@PreAuthorize`) e escopo por concessionária |
@@ -127,6 +127,7 @@ Modelo completo em [`.env.example`](.env.example).
 | `ENV` | `development` (`production` no perfil prod) | `production` ativa logs JSON e torna `JWT_SECRET` obrigatório. |
 | `JWT_SECRET` | (vazio) | Chave HS256, mínimo 32 bytes. No Render é gerada automaticamente. |
 | `JWT_EXPIRATION_MINUTES` | `60` | Validade do token (1 a 1440). |
+| `JWT_USER_STATE_CACHE_TTL` | `30s` | Cache do estado do usuário usado na revogação de tokens (`0s` desliga). |
 | `DATABASE_URL` | `jdbc:postgresql://localhost:55432/forward?sslmode=disable` | JDBC do PostgreSQL (ignorado no perfil demo). |
 | `DATABASE_USER`, `DATABASE_PASSWORD` | `forward`, `forward_dev` | Credenciais do banco. |
 | `DATABASE_POOL_SIZE` | `10` (`5` no perfil prod) | Conexões do HikariCP. |
@@ -210,12 +211,28 @@ Invoke-RestMethod -Uri http://localhost:8080/api/v1/leads -Headers $headers
 Regras do token:
 
 - HS256, `iss=forward-api`, `aud=forward-app`, `sub` = id do usuário, `email`, `name`, `role`,
-  `dealer_id` (ATENDENTE e GESTOR), `iat`, `nbf`, `exp` (60 min) e `jti` único.
+  `dealer_id` (ATENDENTE e GESTOR), `token_version`, `iat`, `nbf`, `exp` (60 min) e `jti` único.
 - Validados: assinatura, algoritmo, expiração (30 s de tolerância), emissor, audiência e claims
   obrigatórias. Token ausente: 401 `AUTH_REQUIRED`; expirado: 401 `AUTH_TOKEN_EXPIRED`; inválido:
   401 `AUTH_TOKEN_INVALID`, sempre com o header `WWW-Authenticate: Bearer`.
 - E-mail inexistente e senha errada recebem a mesma resposta 401 `AUTH_INVALID_CREDENTIALS`.
 - Login limitado a 5 tentativas por minuto por IP (429 `RATE_LIMITED` com `Retry-After`).
+
+### Revogação
+
+O JWT não fica valendo "às cegas" até expirar. A cada requisição, depois de validar a
+assinatura, a API compara o token com o estado atual do usuário em `app_users` (existe, está
+ativo, mesmo `role`, mesmo `dealer_id` e mesmo `token_version`). Qualquer diferença responde
+**401 `AUTH_TOKEN_REVOKED`** ("Sessão revogada..."), e o app deve pedir um novo login.
+
+- O `token_version` do usuário é incrementado pelo ADMIN em qualquer `PATCH /api/v1/users/{id}`
+  que envie `role`, `active`, `dealer_id` ou `password` (mesmo com o valor atual: `PATCH
+  {"active": true}` força novo login). Excluir o usuário também revoga os tokens. Alterar só o
+  nome não revoga.
+- O estado do usuário fica em um cache em memória de 30 s (`JWT_USER_STATE_CACHE_TTL`; `0`
+  desliga). As alterações feitas pelo ADMIN invalidam o cache na hora, então a revogação é
+  imediata nesta instância; em várias instâncias, no máximo um TTL.
+- Chamadas com `X-API-Key` (perfil SERVICE) não dependem de `app_users`.
 
 ## Perfis e permissões
 
@@ -322,6 +339,7 @@ Erros de validação trazem também `errors: [{"field": "status", "message": "..
 |---|---|---|
 | `VALIDATION_FAILED`, `INVALID_PARAMETER`, `MALFORMED_JSON`, `INVALID_FIELD_VALUE`, `TYPE_MISMATCH`, `EMPTY_PATCH`, `USER_DEALER_REQUIRED` | 400 | entrada inválida |
 | `AUTH_REQUIRED`, `AUTH_TOKEN_INVALID`, `AUTH_TOKEN_EXPIRED`, `AUTH_API_KEY_INVALID` | 401 | token ou chave ausente/inválido |
+| `AUTH_TOKEN_REVOKED` | 401 | usuário desativado, excluído, com perfil, concessionária ou senha alterados depois da emissão do token |
 | `AUTH_INVALID_CREDENTIALS`, `AUTH_USER_DISABLED` | 401 | login |
 | `ACCESS_DENIED`, `ACCESS_OTHER_DEALER` | 403 | perfil sem permissão, outra concessionária |
 | `LEAD_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `VEHICLE_NOT_FOUND`, `SCORE_NOT_FOUND`, `SERVICE_EVENT_NOT_FOUND`, `USER_NOT_FOUND`, `NOT_FOUND` | 404 | recurso ou rota inexistente |
@@ -334,17 +352,21 @@ Erros de validação trazem também `errors: [{"field": "status", "message": "..
 ## Testes
 
 ```bash
-./mvnw test                                      # 192 testes (unitários + integração)
+./mvnw test                                      # 217 testes (unitários + integração)
 ./mvnw verify                                    # + JaCoCo e relatório HTML do Surefire
 ./mvnw spotless:check && ./mvnw verify -P quality  # mesmas verificações do CI
 ```
 
-- **Unitários (102)**: `JwtServiceTest` (emissão, expiração, tolerância, adulteração, `iss`/`aud`,
-  `alg=none`, segredo obrigatório em produção), `JwtAuthenticationFilterTest`, `LogSanitizerTest`,
-  `SecureXmlTest` (DOCTYPE/XXE recusados), regras de serviço com Mockito e validações.
-- **Integração (90)**: `@SpringBootTest` + MockMvc contra PostgreSQL 16 embarcado com migrations,
+- **Unitários (119)**: `JwtServiceTest` (emissão, expiração, tolerância, adulteração, `iss`/`aud`,
+  `alg=none`, `token_version`, segredo obrigatório em produção), `JwtAuthenticationFilterTest`
+  (revogação por usuário excluído, inativo, perfil, concessionária e versão), `UserStateCacheTest`
+  (TTL do cache), `LogSanitizerTest`, `SecureXmlTest` (DOCTYPE/XXE recusados), regras de serviço
+  com Mockito e validações.
+- **Integração (98)**: `@SpringBootTest` + MockMvc contra PostgreSQL 16 embarcado com migrations,
   bootstrap e seed. `AuthIT`, `SecurityIT` (401/403 por perfil e por concessionária, CORS,
-  headers), `LeadIT`, `ServiceEventIT`, `UserIT`, `ErrorHandlingIT`, `HttpServerIT` (Tomcat real:
+  headers), `TokenRevocationIT` (token antigo recusado logo após desativar, rebaixar, trocar de
+  concessionária, redefinir senha ou excluir o usuário), `LeadIT`, `ServiceEventIT`, `UserIT`,
+  `ErrorHandlingIT`, `HttpServerIT` (Tomcat real:
   SOAP, WSDL, XXE, Swagger) e `ProdMigrationIT` (reproduz o banco do Supabase: esquema do
   forward-infra sem histórico do Flyway + seed antigo, e valida baseline 13, V14+, bootstrap
   idempotente e dados antigos intactos). Testes que alteram dados fazem rollback ao final.
@@ -410,7 +432,7 @@ free, nome `forwardservice-api` (URL `https://forwardservice-api.onrender.com`),
    - `DATABASE_USER`: `postgres.ysewoopjgdpvnkfhffgy`
    - `DATABASE_PASSWORD`: a senha do banco do projeto Supabase
 5. Clique em **Apply**. O primeiro build leva alguns minutos; acompanhe em **Logs**. Na primeira
-   inicialização o Flyway cria o baseline na versão 13, aplica V14 e V15 e o bootstrap de dados.
+   inicialização o Flyway cria o baseline na versão 13, aplica V14 a V16 e o bootstrap de dados.
 6. Teste: `curl https://forwardservice-api.onrender.com/health` e depois o login com
    `gestor@forward.dev` / `Forward@2026`.
 
@@ -464,7 +486,8 @@ src/main/java/com/fwdford/forwardapi/
   util/          LogSanitizer (log injection), SecureXml (XXE)
   web/           Controllers REST, DTOs (web/dto), filtros de request id e headers, CORS
 src/main/resources/
-  db/migration/  Flyway V1..V15 (V1..V13 = forward-infra, V14 app_users, V15 notas/chave natural)
+  db/migration/  Flyway V1..V16 (V1..V13 = forward-infra, V14 app_users, V15 notas/chave natural,
+                 V16 token_version)
   db/bootstrap/  R__bootstrap_demo_data.sql (perfis prod, demo e test; idempotente)
   db/seed/       R__seed_demo_data.sql (usuários extras, somente demo e test)
   application*.yml, logback-spring.xml, xsd/vehicles.xsd
