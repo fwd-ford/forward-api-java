@@ -27,7 +27,7 @@ services:
       - {key: JWT_SECRET, generateValue: true}
       - {key: JWT_EXPIRATION_MINUTES, value: "60"}
       # Typed in the dashboard on the first deploy (sync: false):
-      #   DATABASE_URL      jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+      #   DATABASE_URL      jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require
       #   DATABASE_USER     postgres.ysewoopjgdpvnkfhffgy
       #   DATABASE_PASSWORD Supabase database password
       - {key: DATABASE_URL, sync: false}
