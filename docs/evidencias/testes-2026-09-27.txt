@@ -2,7 +2,7 @@ Evidência de execução dos testes automatizados - forward-api-java (Sprint 3)
 ==============================================================================
 
 Comando:   ./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality
-Commit:    feat/sprint3-soa-jwt-rbac @ 0ad24c3
+Commit:    feat/sprint3-soa-jwt-rbac @ 039630d
 Ambiente:  Windows 11, Java 17.0.18 (Temurin), Maven 3.9.6 (wrapper),
            PostgreSQL 16.15 embarcado (Zonky) com migrations Flyway V1..V15 e seed
 Relatórios: target/surefire-reports (XML/TXT), target/reports/surefire.html,
@@ -12,21 +12,21 @@ Resultado: 192 testes, 0 falhas, 0 erros, 0 ignorados (102 unitários + 90 de in
 
 Classe                       Tipo              Testes Falhas  Erros Ignor.  Tempo(s)
 ------------------------------------------------------------------------------------
-ApiExceptionTest             unitário               9      0      0      0      0.18
+ApiExceptionTest             unitário               9      0      0      0      0.21
 AuthIT                       integração HTTP       12      0      0      0     13.67
-ErrorHandlingIT              integração HTTP        9      0      0      0      0.13
-HttpServerIT                 integração HTTP        7      0      0      0      5.57
-LeadIT                       integração HTTP       16      0      0      0      0.34
-ProdMigrationIT              integração HTTP        2      0      0      0      6.12
-SecurityIT                   integração HTTP       23      0      0      0      0.84
+ErrorHandlingIT              integração HTTP        9      0      0      0      0.15
+HttpServerIT                 integração HTTP        7      0      0      0      5.68
+LeadIT                       integração HTTP       16      0      0      0      0.35
+ProdMigrationIT              integração HTTP        2      0      0      0      6.08
+SecurityIT                   integração HTTP       23      0      0      0      0.91
 ServiceEventIT               integração HTTP       10      0      0      0      0.17
 UserIT                       integração HTTP       11      0      0      0      0.33
 HmacValidatorTest            unitário              14      0      0      0      0.02
 JwtAuthenticationFilterTest  unitário               9      0      0      0      0.01
 JwtServiceTest               unitário              18      0      0      0      0.04
-CustomerServiceTest          unitário              10      0      0      0      0.48
-ScoreServiceTest             unitário               6      0      0      0      0.10
-ServiceEventServiceTest      unitário              10      0      0      0      0.43
+CustomerServiceTest          unitário              10      0      0      0      0.47
+ScoreServiceTest             unitário               6      0      0      0      0.09
+ServiceEventServiceTest      unitário              10      0      0      0      0.42
 LogSanitizerTest             unitário               5      0      0      0      0.01
 SecureXmlTest                unitário               4      0      0      0      0.03
 ValidationsTest              unitário              17      0      0      0      0.03
@@ -38,8 +38,8 @@ Linhas finais do log do Maven:
   [INFO] You have 0 Checkstyle violations.
   [INFO] BugInstance size is 0
   [INFO] BUILD SUCCESS
-  [INFO] Total time:  54.903 s
-  [INFO] Finished at: 2026-09-27T04:17:12-03:00
+  [INFO] Total time:  55.199 s
+  [INFO] Finished at: 2026-09-27T04:22:11-03:00
 
 Testes executados (método e cenário):
   [OK  ] ApiExceptionTest.conflict_and_unprocessable_use_409_and_422

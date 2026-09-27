@@ -1,6 +1,6 @@
 # Cobertura de testes (JaCoCo)
 
-Execução: `./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality` no commit `0ad24c3` (feat/sprint3-soa-jwt-rbac). Suíte: 192 testes (102 unitários + 90 de integração HTTP), 0 falhas.
+Execução: `./mvnw -B -ntp spotless:check && ./mvnw -B -ntp clean verify -P quality` no commit `039630d` (feat/sprint3-soa-jwt-rbac). Suíte: 192 testes (102 unitários + 90 de integração HTTP), 0 falhas.
 
 Relatório completo: `target/site/jacoco/index.html` (gerado na fase `verify`).
 
