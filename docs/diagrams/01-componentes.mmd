@@ -1,0 +1,20 @@
+flowchart LR
+  subgraph CLI["Clientes"]
+    MOB["forward-mobile<br/>React Native + Expo<br/>app do atendente"]
+    WEB["forward-web<br/>SvelteKit<br/>painel do gestor"]
+    LEG["Sistemas legados<br/>cliente SOAP"]
+  end
+  subgraph INT["Integrações"]
+    N8N["n8n<br/>alertas WhatsApp e rotinas"]
+    ML["forward-ml<br/>Python + XGBoost<br/>score de churn (batch)"]
+  end
+  subgraph FLY["Fly.io (gru) - TLS na borda"]
+    API["forward-api-java<br/>Spring Boot 3.5 / Java 17<br/>REST /api/v1 + SOAP GetVehicle<br/>emite e valida JWT, RBAC"]
+    PG[("PostgreSQL 16<br/>embarcado no perfil demo<br/>ou externo via DATABASE_URL")]
+  end
+  MOB -- "HTTPS JSON<br/>Bearer JWT" --> API
+  WEB -- "HTTPS JSON<br/>Bearer JWT" --> API
+  LEG -- "SOAP 1.1<br/>Bearer JWT" --> API
+  N8N -- "HTTPS JSON<br/>X-API-Key (perfil SERVICE)" --> API
+  ML -- "grava churn_scores e leads" --> PG
+  API -- "JDBC HikariCP<br/>migrations Flyway" --> PG

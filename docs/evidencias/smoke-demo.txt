@@ -1,0 +1,378 @@
+# Evidência: smoke test do perfil demo (JAR real, sem Docker, sem banco externo)
+#
+# Commit:   ed75309 (feat/sprint3-soa-jwt-rbac)
+# Build:    ./mvnw -B -ntp -DskipTests package
+# Execução: java -jar target/forward-api.jar --spring.profiles.active=demo
+# Smoke:    scripts/smoke-demo.sh http://localhost:8080
+# Máquina:  Windows 11, Java 17.0.18 (Temurin), PostgreSQL 16.15 embarcado (Zonky)
+# Tokens JWT ocultados (redacted) na saída.
+#
+# Linhas relevantes do log de inicialização (JSON, perfil demo):
+#   INFO ForwardApiApplication - The following 1 profile is active: "demo"
+#   INFO EmbeddedPostgresConfig - embedded_postgres_started port=49586 version=16
+#   WARN EmbeddedPostgresConfig - embedded_database_active: data is ephemeral and seeded with public demo credentials; never store real customer data in this mode.
+#   INFO DbMigrate - Successfully applied 16 migrations to schema "public", now at version v15 (execution time 00:00.224s)
+#   WARN JwtService - jwt_secret_missing: JWT_SECRET is not set, generated an ephemeral random signing key. Tokens become invalid after a restart. Set JWT_SECRET for stable tokens.
+#   INFO ForwardApiApplication - Started ForwardApiApplication in 11.389 seconds (process running for 11.892)
+
+ForwardService API smoke test - 2026-09-27T06:40:11Z - http://localhost:8080
+
+### Health (publico)
+$ curl -X GET http://localhost:8080/health
+HTTP/1.1 200 
+Content-Type: application/json
+{
+  "service": "forward-api",
+  "status": "ok",
+  "version": "3.0.0",
+  "timestamp": "2026-09-27T06:40:11.905386400Z"
+}
+
+### Sem token em rota protegida -> 401
+$ curl -X GET http://localhost:8080/api/v1/leads
+HTTP/1.1 401 
+WWW-Authenticate: Bearer realm="forward-api"
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:auth-required",
+  "title": "Não autenticado",
+  "status": 401,
+  "detail": "Autenticação necessária. Envie o header Authorization: Bearer <token>.",
+  "instance": "/api/v1/leads",
+  "code": "AUTH_REQUIRED",
+  "timestamp": "2026-09-27T06:40:12.225076800Z",
+  "request_id": "1bd8ca69-0c68-4ca9-b3db-b125501c743b"
+}
+
+### Login GESTOR (publico) -> 200 + JWT
+$ curl -X POST http://localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"gestor@forward.dev","password":"Forward@2026"}'
+HTTP/1.1 200 
+Content-Type: application/json
+{
+  "access_token": "eyJ0eXAiOiJK...(redacted)",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "expires_at": "2026-09-27T07:40:12.679656600Z",
+  "user": {
+    "id": "ad000000-0000-4000-8000-000000000002",
+    "name": "Gustavo Mendes",
+    "email": "gestor@forward.dev",
+    "role": "GESTOR",
+    "dealer_id": "d0000000-0000-4000-8000-000000000001",
+    "dealer_name": "Ford Morumbi São Paulo"
+  }
+}
+
+### Senha errada -> 401 AUTH_INVALID_CREDENTIALS
+$ curl -X POST http://localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"gestor@forward.dev","password":"Errada@2026"}'
+HTTP/1.1 401 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:auth-invalid-credentials",
+  "title": "Não autenticado",
+  "status": 401,
+  "detail": "E-mail ou senha inválidos.",
+  "instance": "/api/v1/auth/login",
+  "code": "AUTH_INVALID_CREDENTIALS",
+  "timestamp": "2026-09-27T06:40:13.045790300Z",
+  "request_id": "1baaa7ad-2ebf-44e2-82ef-83900d798c43"
+}
+
+### GET /me (GESTOR)
+$ curl -X GET http://localhost:8080/api/v1/me -H 'Authorization: Bearer $GESTOR_TOKEN'
+HTTP/1.1 200 
+Content-Type: application/json
+{
+  "id": "ad000000-0000-4000-8000-000000000002",
+  "name": "Gustavo Mendes",
+  "email": "gestor@forward.dev",
+  "role": "GESTOR",
+  "dealer_id": "d0000000-0000-4000-8000-000000000001",
+  "dealer_name": "Ford Morumbi São Paulo",
+  "permissions": [
+    "leads:read",
+    "leads:update",
+    "customers:read",
+    "vehicles:read",
+    "scores:read",
+    "service-events:read",
+    "service-events:write"
+  ]
+}
+
+### Leads do GESTOR (so a propria concessionaria) + X-Total-Count
+$ curl -X GET http://localhost:8080/api/v1/leads?limit=3 -H 'Authorization: Bearer $GESTOR_TOKEN'
+HTTP/1.1 200 
+X-Total-Count: 8
+Content-Type: application/json
+[
+  {
+    "id": "a1000000-0000-4000-8000-000000000002",
+    "customer_id": "11111111-1111-1111-1111-111111111006",
+    "vin": "9BFZZZ5SZJB000006",
+    "dealer_id": "d0000000-0000-4000-8000-000000000001",
+    "priority": "critical",
+    "status": "new",
+    "reason": "Cliente sem retorno à rede desde 2023 (score 0.88).",
+    "expected_value_brl": 2500.0,
+    "created_at": "2026-09-26T06:40:08.540312Z",
+    "updated_at": "2026-09-27T06:40:08.540312Z",
+    "customer_name": "Patrícia Gomes",
+    "vehicle_model": "Ranger",
+    "vehicle_year": 2021,
+    "dealer_name": "Ford Morumbi São Paulo",
+    "churn_probability": 0.88,
+    "segment": "abandono"
+  },
+  {
+    "id": "a1000000-0000-4000-8000-000000000001",
+    "customer_id": "11111111-1111-1111-1111-111111111001",
+    "vin": "9BFZZZ5SZJB000001",
+    "dealer_id": "d0000000-0000-4000-8000-000000000001",
+    "priority": "high",
+    "status": "new",
+    "reason": "Revisão atrasada há 18 meses (score 0.78).",
+    "expected_value_brl": 1200.0,
+    "created_at": "2026-09-25T06:40:08.540312Z",
+    "updated_at": "2026-09-27T06:40:08.540312Z",
+    "customer_name": "João da Silva",
+    "vehicle_model": "Ka",
+    "vehicle_year": 2018,
+    "dealer_name": "Ford Morumbi São Paulo",
+    "churn_probability": 0.78,
+    "segment": "esquecido"
+  }
+]
+... (3 itens no total nesta pagina)
+
+### Detalhe do lead
+$ curl -X GET http://localhost:8080/api/v1/leads/a1000000-0000-4000-8000-000000000001 -H 'Authorization: Bearer $ATENDENTE_TOKEN'
+HTTP/1.1 200 
+Content-Type: application/json
+{
+  "id": "a1000000-0000-4000-8000-000000000001",
+  "customer_id": "11111111-1111-1111-1111-111111111001",
+  "vin": "9BFZZZ5SZJB000001",
+  "dealer_id": "d0000000-0000-4000-8000-000000000001",
+  "priority": "high",
+  "status": "new",
+  "reason": "Revisão atrasada há 18 meses (score 0.78).",
+  "expected_value_brl": 1200.0,
+  "created_at": "2026-09-25T06:40:08.540312Z",
+  "updated_at": "2026-09-27T06:40:08.540312Z",
+  "customer_name": "João da Silva",
+  "vehicle_model": "Ka",
+  "vehicle_year": 2018,
+  "dealer_name": "Ford Morumbi São Paulo",
+  "churn_probability": 0.78,
+  "segment": "esquecido"
+}
+
+### PATCH lead new -> contacted -> 200
+$ curl -X PATCH http://localhost:8080/api/v1/leads/a1000000-0000-4000-8000-000000000001 -H 'Authorization: Bearer $ATENDENTE_TOKEN' -H 'Content-Type: application/json' -d '{"status":"contacted","notes":"Cliente atendeu, retorno amanha."}'
+HTTP/1.1 200 
+Content-Type: application/json
+{
+  "id": "a1000000-0000-4000-8000-000000000001",
+  "customer_id": "11111111-1111-1111-1111-111111111001",
+  "vin": "9BFZZZ5SZJB000001",
+  "dealer_id": "d0000000-0000-4000-8000-000000000001",
+  "priority": "high",
+  "status": "contacted",
+  "reason": "Revisão atrasada há 18 meses (score 0.78).",
+  "expected_value_brl": 1200.0,
+  "created_at": "2026-09-25T06:40:08.540312Z",
+  "updated_at": "2026-09-27T06:40:14.851923Z",
+  "notes": "Cliente atendeu, retorno amanha.",
+  "customer_name": "João da Silva",
+  "vehicle_model": "Ka",
+  "vehicle_year": 2018,
+  "dealer_name": "Ford Morumbi São Paulo",
+  "churn_probability": 0.78,
+  "segment": "esquecido"
+}
+
+### PATCH lead convertido -> lost -> 409
+$ curl -X PATCH http://localhost:8080/api/v1/leads/a1000000-0000-4000-8000-000000000005 -H 'Authorization: Bearer $ATENDENTE_TOKEN' -H 'Content-Type: application/json' -d '{"status":"lost"}'
+HTTP/1.1 409 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:lead-invalid-transition",
+  "title": "Conflito",
+  "status": 409,
+  "detail": "Transição de status inválida: converted -> lost (o lead já está em um status final).",
+  "instance": "/api/v1/leads/a1000000-0000-4000-8000-000000000005",
+  "code": "LEAD_INVALID_TRANSITION",
+  "timestamp": "2026-09-27T06:40:15.133823800Z",
+  "request_id": "7c118dd1-f1fc-4d01-a95a-879d87cee759"
+}
+
+### Lead de outra concessionaria -> 403
+$ curl -X GET http://localhost:8080/api/v1/leads/a1000000-0000-4000-8000-000000000009 -H 'Authorization: Bearer $ATENDENTE_TOKEN'
+HTTP/1.1 403 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:access-other-dealer",
+  "title": "Acesso negado",
+  "status": 403,
+  "detail": "Este recurso pertence a outra concessionária.",
+  "instance": "/api/v1/leads/a1000000-0000-4000-8000-000000000009",
+  "code": "ACCESS_OTHER_DEALER",
+  "timestamp": "2026-09-27T06:40:15.428097200Z",
+  "request_id": "708a58a0-f36e-4870-98de-a740461e9207"
+}
+
+### ATENDENTE em /users -> 403
+$ curl -X GET http://localhost:8080/api/v1/users -H 'Authorization: Bearer $ATENDENTE_TOKEN'
+HTTP/1.1 403 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:access-denied",
+  "title": "Acesso negado",
+  "status": 403,
+  "detail": "Seu perfil não tem permissão para executar esta operação.",
+  "instance": "/api/v1/users",
+  "code": "ACCESS_DENIED",
+  "timestamp": "2026-09-27T06:40:15.718320300Z",
+  "request_id": "ed3da17d-6cc5-4a93-9030-8f4b0ea52154"
+}
+
+### ADMIN lista usuarios
+$ curl -X GET http://localhost:8080/api/v1/users?limit=2 -H 'Authorization: Bearer $ADMIN_TOKEN'
+HTTP/1.1 200 
+X-Total-Count: 6
+Content-Type: application/json
+[
+  {
+    "id": "ad000000-0000-4000-8000-000000000001",
+    "name": "Ana Paula Ribeiro",
+    "email": "admin@forward.dev",
+    "role": "ADMIN",
+    "dealer_id": null,
+    "dealer_name": null,
+    "active": true,
+    "last_login_at": "2026-09-27T06:40:13.789871Z",
+    "created_at": "2026-09-27T06:40:08.540312Z",
+    "updated_at": "2026-09-27T06:40:13.789871Z"
+  },
+  {
+    "id": "ad000000-0000-4000-8000-000000000004",
+    "name": "Diego Carvalho",
+    "email": "atendente2@forward.dev",
+    "role": "ATENDENTE",
+    "dealer_id": "d0000000-0000-4000-8000-000000000002",
+    "dealer_name": "Ford Barra Rio",
+    "active": true,
+    "last_login_at": null,
+    "created_at": "2026-09-27T06:40:08.540312Z",
+    "updated_at": "2026-09-27T06:40:08.540312Z"
+  }
+]
+
+### GESTOR cria evento de servico -> 201 + Location
+$ curl -X POST http://localhost:8080/api/v1/service-events -H 'Authorization: Bearer $GESTOR_TOKEN' -H 'Content-Type: application/json' -d '{"vin":"9BFZZZ5SZJB000011","dealer_code":"F0001","service_code":1,"maintenance_number":4,"km":40100,"service_date":"2026-11-20T09:00:00-03:00","main_source":"dealer_app"}'
+HTTP/1.1 201 
+Location: http://localhost:8080/api/v1/service-events/75d005b1-6335-49f9-a841-5e1e2b1ba374
+Content-Type: application/json
+{
+  "id": "75d005b1-6335-49f9-a841-5e1e2b1ba374",
+  "vin": "9BFZZZ5SZJB000011",
+  "dealer_id": "d0000000-0000-4000-8000-000000000001",
+  "dealer_code": "F0001",
+  "order_type": "scheduled_maintenance",
+  "service_code": 1,
+  "status": "scheduled",
+  "scheduled_at": "2026-11-20T12:00:00Z",
+  "mileage_km": 40100,
+  "maintenance_number": 4,
+  "main_source": "dealer_app",
+  "created_at": "2026-09-27T06:40:16.279104Z",
+  "updated_at": "2026-09-27T06:40:16.279104Z"
+}
+
+### Evento duplicado -> 409
+$ curl -X POST http://localhost:8080/api/v1/service-events -H 'Authorization: Bearer $GESTOR_TOKEN' -H 'Content-Type: application/json' -d '{"vin":"9BFZZZ5SZJB000011","dealer_code":"F0001","service_code":1,"maintenance_number":4,"km":40100,"service_date":"2026-11-20T09:00:00-03:00","main_source":"dealer_app"}'
+HTTP/1.1 409 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:service-event-duplicate",
+  "title": "Conflito",
+  "status": 409,
+  "detail": "Já existe um evento com o mesmo VIN, concessionária, tipo e data.",
+  "instance": "/api/v1/service-events",
+  "code": "SERVICE_EVENT_DUPLICATE",
+  "timestamp": "2026-09-27T06:40:16.737787700Z",
+  "request_id": "9487f600-7720-42fc-8b6e-760da758396c"
+}
+
+### Evento com VIN inexistente -> 422
+$ curl -X POST http://localhost:8080/api/v1/service-events -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' -d '{"vin":"9BFZZZ5SZJB999999","dealer_code":"F0001","service_code":1,"maintenance_number":1,"service_date":"2026-11-20T09:00:00-03:00","main_source":"dealer_app"}'
+HTTP/1.1 422 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:referenced-vehicle-not-found",
+  "title": "Entidade não processável",
+  "status": 422,
+  "detail": "O veículo informado (vin) não existe.",
+  "instance": "/api/v1/service-events",
+  "code": "REFERENCED_VEHICLE_NOT_FOUND",
+  "timestamp": "2026-09-27T06:40:17.007925100Z",
+  "request_id": "13c8b270-dcd9-478f-854a-e63e072d911c"
+}
+
+### GESTOR tenta excluir evento -> 403
+$ curl -X DELETE http://localhost:8080/api/v1/service-events/75d005b1-6335-49f9-a841-5e1e2b1ba374 -H 'Authorization: Bearer $GESTOR_TOKEN'
+HTTP/1.1 403 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:access-denied",
+  "title": "Acesso negado",
+  "status": 403,
+  "detail": "Seu perfil não tem permissão para executar esta operação.",
+  "instance": "/api/v1/service-events/75d005b1-6335-49f9-a841-5e1e2b1ba374",
+  "code": "ACCESS_DENIED",
+  "timestamp": "2026-09-27T06:40:17.287756600Z",
+  "request_id": "c77995ab-dbf1-4e70-b174-4fb0f170f475"
+}
+
+### ADMIN exclui evento -> 204
+$ curl -X DELETE http://localhost:8080/api/v1/service-events/75d005b1-6335-49f9-a841-5e1e2b1ba374 -H 'Authorization: Bearer $ADMIN_TOKEN'
+HTTP/1.1 204 
+
+### Metodo nao suportado -> 405
+$ curl -X DELETE http://localhost:8080/api/v1/leads -H 'Authorization: Bearer $ADMIN_TOKEN'
+HTTP/1.1 405 
+Content-Type: application/problem+json
+{
+  "type": "urn:forward:problem:method-not-allowed",
+  "title": "Método não permitido",
+  "status": 405,
+  "detail": "Método DELETE não é suportado por este recurso.",
+  "instance": "/api/v1/leads",
+  "code": "METHOD_NOT_ALLOWED",
+  "timestamp": "2026-09-27T06:40:17.738381200Z",
+  "request_id": "4ed55ccf-3a58-4b5b-b050-e5a948ff9d68"
+}
+
+### Score do cliente (sub-recurso)
+$ curl -X GET http://localhost:8080/api/v1/customers/11111111-1111-1111-1111-111111111001/score -H 'Authorization: Bearer $ATENDENTE_TOKEN'
+HTTP/1.1 200 
+Content-Type: application/json
+{
+  "id": "5c000000-0000-4000-8000-000000000001",
+  "customer_id": "11111111-1111-1111-1111-111111111001",
+  "vin": "9BFZZZ5SZJB000001",
+  "model_version": "v1.0",
+  "segment": "esquecido",
+  "churn_probability": 0.78,
+  "confidence": 0.82,
+  "computed_at": "2026-09-27T06:40:08.540312Z"
+}
+
+### SOAP GetVehicle com token
+$ curl -X POST http://localhost:8080/soap/vehicles -H 'Content-Type: text/xml' -H 'Authorization: Bearer $ADMIN_TOKEN' -d '<GetVehicleRequest>...'
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Header/><SOAP-ENV:Body><GetVehicleResponse xmlns="urn:forwardservice:vehicles"><VIN>9BFZZZ5SZJB000001</VIN><Model>Ka</Model><Year>2018</Year><Discontinued>true</Discontinued></GetVehicleResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>
+HTTP 200
+
+### WSDL (publico)
+GET /soap/vehicles.wsdl -> HTTP 200

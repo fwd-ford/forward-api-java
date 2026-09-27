@@ -1,0 +1,36 @@
+sequenceDiagram
+  autonumber
+  actor U as Atendente (app)
+  participant F as Filtros (RequestId, Headers, RateLimit)
+  participant J as JwtAuthenticationFilter
+  participant AU as AuthController + AuthService
+  participant Z as AuthorizationFilter
+  participant C as LeadController
+  participant S as LeadService
+  participant R as LeadRepository
+  participant DB as PostgreSQL
+
+  U->>F: POST /api/v1/auth/login {email, password}
+  F->>AU: rota pública (limite 5 por minuto por IP)
+  AU->>DB: SELECT app_users WHERE lower(email) = ?
+  AU->>AU: BCrypt.matches (hash fictício se o e-mail não existe)
+  AU->>DB: INSERT audit_log (auth.login_succeeded)
+  AU-->>U: 200 {access_token JWT HS256, expires_in 3600, user}
+
+  U->>F: GET /api/v1/leads/{id} com Authorization Bearer JWT
+  F->>J: repassa a requisição
+  J->>J: assinatura, alg HS256, exp com 30 s de tolerância, iss, aud, claims
+  J->>Z: SecurityContext = AuthenticatedUser + ROLE_ATENDENTE
+  alt token ausente, expirado ou inválido
+    Z-->>U: 401 problem+json (AUTH_REQUIRED, AUTH_TOKEN_EXPIRED, AUTH_TOKEN_INVALID)
+  end
+  Z->>C: autenticado
+  C->>S: get(id, principal)
+  S->>R: findById(id)
+  R->>DB: SELECT com joins (cliente, veículo, score)
+  S->>S: lead.dealer_id igual ao dealer_id do token?
+  alt mesma concessionária ou ADMIN
+    S-->>U: 200 Lead
+  else outra concessionária
+    S-->>U: 403 ACCESS_OTHER_DEALER
+  end

@@ -1,0 +1,10 @@
+flowchart LR
+  A["1. RequestIdFilter<br/>X-Request-Id e MDC"] --> B["2. SecurityHeadersFilter<br/>CSP, HSTS, X-Frame-Options"]
+  B --> C["3. RateLimitFilter<br/>Bucket4j por IP<br/>login: 5 por minuto"]
+  C --> D["4. CorsFilter<br/>allowlist ALLOWED_ORIGINS"]
+  D --> E["5. JwtAuthenticationFilter<br/>Bearer JWT ou X-API-Key"]
+  E --> G["6. ExceptionTranslationFilter<br/>401 e 403 em problem+json"]
+  G --> H["7. AuthorizationFilter<br/>rotas públicas, autenticadas<br/>e regras por perfil"]
+  H --> I["DispatcherServlet<br/>Controllers, Services com @PreAuthorize"]
+  C -. "429 RATE_LIMITED" .-> X(["Resposta de erro"])
+  G -.-> X
