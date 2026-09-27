@@ -38,7 +38,7 @@ externalDocs:
   description: "README, arquitetura e matriz de permissões"
   url: https://github.com/fwd-ford/forward-api-java#readme
 servers:
-- url: https://forwardservice-api.onrender.com
+- url: https://forward-api-java.onrender.com
   description: Produção (Render + Supabase)
 - url: http://localhost:8080
   description: Local (perfil demo)

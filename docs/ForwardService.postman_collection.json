@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ForwardService API (Sprint 3)",
-    "description": "Coleção da API REST e SOAP do ForwardService. Rode primeiro a pasta 01 Auth: os logins gravam os tokens nas variáveis da coleção (token = GESTOR, adminToken, atendenteToken). baseUrl padrão: http://localhost:8080 (perfil demo); produção: https://forwardservice-api.onrender.com. Senha dos usuários de demo: Forward@2026. O login é limitado a 5 tentativas por minuto por IP.",
+    "description": "Coleção da API REST e SOAP do ForwardService. Rode primeiro a pasta 01 Auth: os logins gravam os tokens nas variáveis da coleção (token = GESTOR, adminToken, atendenteToken). baseUrl padrão: http://localhost:8080 (perfil demo); produção: https://forward-api-java.onrender.com. Senha dos usuários de demo: Forward@2026. O login é limitado a 5 tentativas por minuto por IP.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {

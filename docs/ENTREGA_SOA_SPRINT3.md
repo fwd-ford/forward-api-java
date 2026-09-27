@@ -18,7 +18,7 @@
 | Arquitetura (diagramas e fluxos) | https://github.com/fwd-ford/forward-api-java/blob/main/docs/ARQUITETURA.md |
 | Contrato OpenAPI 3 | https://github.com/fwd-ford/forward-api-java/blob/main/openapi.yaml |
 | Swagger UI (local) | http://localhost:8080/swagger-ui/index.html |
-| API publicada (Render) | https://forwardservice-api.onrender.com/swagger-ui/index.html |
+| API publicada (Render) | https://forward-api-java.onrender.com/swagger-ui/index.html |
 | Coleção Postman (38 requisições) | https://github.com/fwd-ford/forward-api-java/blob/main/docs/ForwardService.postman_collection.json |
 | Evidências dos testes | https://github.com/fwd-ford/forward-api-java/tree/main/docs/evidencias |
 | Pull request da entrega (código + revisão + CI) | https://github.com/fwd-ford/forward-api-java/pull/48 |

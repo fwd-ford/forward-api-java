@@ -9,7 +9,7 @@
 # DATABASE_URL, DATABASE_USER and DATABASE_PASSWORD > Apply. See README "Deploy no Render".
 services:
   - type: web
-    name: forwardservice-api            # public URL: https://forwardservice-api.onrender.com
+    name: forward-api-java              # public URL: https://forward-api-java.onrender.com
     runtime: docker
     plan: free
     region: virginia                    # closest Render region to Supabase sa-east-1
